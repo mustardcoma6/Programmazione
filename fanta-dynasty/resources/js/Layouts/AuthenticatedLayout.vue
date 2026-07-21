@@ -6,8 +6,7 @@ import DropdownLink from '@/Components/DropdownLink.vue';
 import { Link, usePage } from '@inertiajs/vue3';
 
 const user = usePage().props.auth.user;
-const leagues = usePage().props.leagues || [];
-const isAdmin = leagues.length > 0 && leagues[0].admin_id === user.id;
+const isAdmin = usePage().props.auth.is_admin;
 </script>
 
 <template>
@@ -31,7 +30,7 @@ const isAdmin = leagues.length > 0 && leagues[0].admin_id === user.id;
                                 <div v-if="isAdmin" class="hidden sm:flex sm:items-center ms-4">
                                     <Dropdown align="right" width="48">
                                         <template #trigger>
-                                            <button class="inline-flex items-center px-3 py-2 text-sm font-bold text-red-600 bg-red-50 rounded-lg uppercase">⚙️ Gestione</button>
+                                           <button class="inline-flex items-center text-sm font-bold text-red-600 uppercase">⚙️ Gestione</button>
                                         </template>
                                         <template #content>
                                             <DropdownLink :href="route('market.sessions')">Nuova Sessione</DropdownLink>
@@ -44,7 +43,13 @@ const isAdmin = leagues.length > 0 && leagues[0].admin_id === user.id;
                         <div class="hidden sm:flex sm:items-center">
                             <Dropdown align="right" width="48">
                                 <template #trigger><button class="font-bold text-gray-500 uppercase text-sm">{{ user.name }} ▼</button></template>
-                                <template #content><DropdownLink :href="route('logout')" method="post" as="button">Esci</DropdownLink></template>
+                                <template #content>
+    <DropdownLink :href="route('profile.edit')">Profilo</DropdownLink>
+
+    <DropdownLink :href="route('logout')" method="post" as="button">
+        Esci
+    </DropdownLink>
+</template>
                             </Dropdown>
                         </div>
                     </div>

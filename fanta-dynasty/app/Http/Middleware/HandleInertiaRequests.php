@@ -33,6 +33,9 @@ class HandleInertiaRequests extends Middleware
             ...parent::share($request),
             'auth' => [
                 'user' => $request->user(),
+                'is_admin' => fn () => $request->user()
+        ? \App\Models\League::where('admin_id', $request->user()->id)->exists()
+        : false,
             ],
         ];
     }

@@ -57,8 +57,8 @@ const isMarketActive = () => {
                                 <p class="text-3xl font-black text-green-600 font-mono">{{ myData?.remaining_budget }}</p>
                             </div>
                             <div class="bg-blue-50 p-4 rounded-xl text-center border border-blue-200 w-32 shadow-sm">
-                                <p class="text-[10px] font-bold text-blue-700 uppercase">Anni Rosa</p>
-                                <p class="text-3xl font-black text-blue-600 font-mono">{{ yearsUsed }}/{{ myData?.years_budget }}</p>
+                                <p class="text-[10px] font-bold text-blue-700 uppercase">Contratti</p>
+                                <p class="text-3xl font-black text-blue-600 font-mono">{{ Math.max(0, 40 - yearsUsed)}}</p>
                             </div>
                         </div>
                     </div>

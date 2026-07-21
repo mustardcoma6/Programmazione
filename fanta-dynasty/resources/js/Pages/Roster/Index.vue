@@ -56,10 +56,11 @@ const saveContract = (item) => {
         <div class="py-12 max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
             
             <div class="bg-white p-6 shadow rounded-xl border-l-8 border-blue-600 flex justify-between items-center">
-                <span class="font-bold text-gray-500 uppercase">Budget Anni Dynasty</span>
-                <p class="text-4xl font-black font-mono" :class="totalYearsUsed > myData.years_budget ? 'text-red-600' : 'text-blue-600'">
-                    {{ totalYearsUsed }} / {{ myData.years_budget }}
-                </p>
+                <span class="font-bold text-gray-500 uppercase">Contratti disponibili</span>
+
+<p class="text-4xl font-black font-mono text-blue-600">
+    {{ Math.max(0, 40 - totalYearsUsed) }} / 40
+</p>
             </div>
 
             <div class="bg-white shadow rounded-xl overflow-hidden border">

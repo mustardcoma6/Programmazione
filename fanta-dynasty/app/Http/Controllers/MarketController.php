@@ -32,9 +32,7 @@ class MarketController extends Controller
         $currentSession = MarketSession::where('league_id', $league->id)
             ->where('start_at', '<=', $now)
             ->where('end_at', '>=', $now)
-            ->first();
-
-        $this->processExpiredAuctions($league->id);
+            ->first();       
         
         $myRoster = Roster::where('league_id', $league->id)->where('user_id', $user->id)->with('player')->get();
         $soldIds = Roster::where('league_id', $league->id)->pluck('real_player_id')->toArray();
@@ -59,6 +57,15 @@ class MarketController extends Controller
 
         $isMarketOpen = MarketSession::where('league_id', $league->id)->where('start_at', '<=', now())->where('end_at', '>=', now())->exists();
         if (!$isMarketOpen) return back()->withErrors(['error' => 'Il mercato è chiuso!']);
+        $participant = LeagueParticipant::where('league_id', $league->id)
+    ->where('user_id', $user->id)
+    ->firstOrFail();
+
+if ($participant->years_budget < 1) {
+    return back()->withErrors([
+        'error' => 'Non puoi fare offerte: non hai anni di contratto disponibili.'
+    ]);
+}
 
         $auction = Auction::where('league_id', $league->id)->where('real_player_id', $request->player_id)->where('is_finished', false)->first();
 
@@ -103,8 +110,20 @@ class MarketController extends Controller
     public function release(Request $request) {
         $rosterItem = Roster::with('player')->findOrFail($request->roster_id);
         $refund = ceil(($rosterItem->release_clause > 0 ? $rosterItem->release_clause : $rosterItem->purchase_price) / 2);
-        LeagueParticipant::where('league_id', $rosterItem->league_id)->where('user_id', $rosterItem->user_id)->first()?->increment('remaining_budget', $refund);
-        $rosterItem->delete();
+
+$yearsRefund = floor($rosterItem->contract_years / 2);
+
+$participant = LeagueParticipant::where('league_id', $rosterItem->league_id)
+    ->where('user_id', $rosterItem->user_id)
+    ->first();
+
+$participant?->increment('remaining_budget', $refund);
+
+if ($yearsRefund > 0) {
+    $participant?->increment('years_budget', $yearsRefund);
+}
+
+$rosterItem->delete();
         return back();
     }
 
@@ -144,6 +163,9 @@ class MarketController extends Controller
         foreach ($expired as $auc) {
             Roster::create(['league_id' => $auc->league_id, 'user_id' => $auc->user_id, 'real_player_id' => $auc->real_player_id, 'purchase_price' => $auc->current_bid, 'contract_years' => 1]);
             LeagueParticipant::where('league_id', $auc->league_id)->where('user_id', $auc->user_id)->first()?->decrement('remaining_budget', $auc->current_bid);
+            LeagueParticipant::where('league_id', $auc->league_id)
+    ->where('user_id', $auc->user_id)
+    ->first()?->decrement('years_budget', 1);
             $auc->update(['is_finished' => true]);
         }
     }
