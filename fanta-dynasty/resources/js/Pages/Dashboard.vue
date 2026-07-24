@@ -61,7 +61,7 @@ const isMarketActive = () => {
                                     </span>
                                 </div>
                             </div>
-
+                            
                             <div class="flex gap-4">
                                 <div class="bg-green-50 p-4 rounded-xl text-center border border-green-200 w-32 shadow-sm">
                                     <p class="text-[10px] font-bold text-green-700 uppercase">Crediti</p>

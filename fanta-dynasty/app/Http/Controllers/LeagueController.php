@@ -11,18 +11,18 @@ use Carbon\Carbon;
 
 class LeagueController extends Controller
 {
-    // MOSTRA PAGINA CREA LEGA
     public function create()
     {
         return Inertia::render('Leagues/Create');
     }
 
-    // SALVA NUOVA LEGA
     public function store(Request $request)
     {
+        // Aggiunta validazione per team_name
         $request->validate([
             'name' => 'required|string|max:255',
             'initial_budget' => 'required|integer|min:100|max:1000',
+            'team_name' => 'required|string|max:255', 
         ]);
 
         $league = League::create([
@@ -33,43 +33,29 @@ class LeagueController extends Controller
             'is_market_open' => false,
         ]);
 
+        // Usiamo il nome squadra scelto dall'utente
         LeagueParticipant::create([
             'league_id' => $league->id,
             'user_id' => auth()->id(),
-            'team_name' => 'Squadra di ' . auth()->user()->name,
+            'team_name' => $request->team_name,
             'remaining_budget' => $request->initial_budget,
+            'years_budget' => 40, // Budget Dynasty standard
         ]);
 
         return redirect()->route('dashboard');
     }
 
-    // AGGIORNA DATE MERCATO (Asta a tempo)
-    public function updateMarket(Request $request, League $league)
-{
-    // Debug: Solo l'admin può procedere
-    if (auth()->id() !== (int)$league->admin_id) {
-        return back()->withErrors(['error' => 'Non sei il presidente!']);
-    }
-
-    // Scrittura forzata colonna per colonna
-    $league->market_start_at = $request->market_start_at;
-    $league->market_end_at = $request->market_end_at;
-    $league->save(); // Salva fisicamente
-
-    return back();
-}
-
-    // MOSTRA PAGINA UNISCITI
     public function join()
     {
         return Inertia::render('Leagues/Join');
     }
 
-    // SALVA UNIONE A LEGA
     public function joinStore(Request $request)
     {
+        // Aggiunta validazione per team_name
         $request->validate([
             'invite_code' => 'required|string|exists:leagues,invite_code',
+            'team_name' => 'required|string|max:255',
         ]);
 
         $league = League::where('invite_code', $request->invite_code)->first();
@@ -79,16 +65,27 @@ class LeagueController extends Controller
                     ->exists();
 
         if ($exists) {
-            return back()->withErrors(['invite_code' => 'Sei già in questa lega!']);
+            return back()->withErrors(['invite_code' => 'Sei già iscritto a questa lega!']);
         }
 
+        // Usiamo il nome squadra scelto dall'utente
         LeagueParticipant::create([
             'league_id' => $league->id,
             'user_id' => auth()->id(),
-            'team_name' => 'Squadra di ' . auth()->user()->name,
+            'team_name' => $request->team_name,
             'remaining_budget' => $league->initial_budget,
+            'years_budget' => 40,
         ]);
 
         return redirect()->route('dashboard');
+    }
+
+    public function updateMarket(Request $request, League $league)
+    {
+        if (auth()->id() !== $league->admin_id) return back();
+        $league->market_start_at = $request->market_start_at;
+        $league->market_end_at = $request->market_end_at;
+        $league->save();
+        return back();
     }
 }
