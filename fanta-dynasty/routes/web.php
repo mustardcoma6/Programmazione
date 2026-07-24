@@ -4,7 +4,11 @@ use App\Http\Controllers\{ProfileController, LeagueController, PlayerController,
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
-Route::get('/', function () { return Inertia::render('Welcome'); });
+Route::get('/', function () {
+    return auth()->check()
+        ? redirect('/dashboard')
+        : redirect('/login');
+});
 
 Route::middleware(['auth'])->group(function () {
     
