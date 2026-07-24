@@ -13,19 +13,35 @@ Route::get('/', function () {
 Route::middleware(['auth'])->group(function () {
     
     // HOME
-    Route::get('/dashboard', function () {
+   Route::get('/dashboard', function () {
         $user = auth()->user();
-        $firstLeague = $user->leagues->first();
+        // Carichiamo le leghe dell'utente assicurandoci di prendere tutto
+        $leagues = $user->leagues()->get(); 
+        $firstLeague = $leagues->first();
+
         if ($firstLeague) {
-            $myData = \App\Models\LeagueParticipant::where('league_id', $firstLeague->id)->where('user_id', $user->id)->first();
-            $myPlayers = \App\Models\Roster::where('league_id', $firstLeague->id)->where('user_id', $user->id)->with('player')->get();
-            $currentLineup = \App\Models\Lineup::where('league_id', $firstLeague->id)->where('user_id', $user->id)->where('matchday', 1)->with('details.player')->first();
+            $myData = \App\Models\LeagueParticipant::where('league_id', $firstLeague->id)
+                ->where('user_id', $user->id)
+                ->first();
+
+            $myPlayers = \App\Models\Roster::where('league_id', $firstLeague->id)
+                ->where('user_id', $user->id)
+                ->with('player')
+                ->get();
+
+            $currentLineup = \App\Models\Lineup::where('league_id', $firstLeague->id)
+                ->where('user_id', $user->id)
+                ->where('matchday', 1)
+                ->with('details.player')
+                ->first();
+
             $allParticipants = \App\Models\LeagueParticipant::where('league_id', $firstLeague->id)->get();
         } else {
             $myData = null; $myPlayers = []; $currentLineup = null; $allParticipants = [];
         }
+
         return Inertia::render('Dashboard', [
-            'leagues' => $user->leagues,
+            'leagues' => $leagues,
             'myData' => $myData,
             'myPlayers' => $myPlayers,
             'currentLineup' => $currentLineup,
