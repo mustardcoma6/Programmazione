@@ -33,20 +33,19 @@ class ProfileController extends Controller
      * Aggiorna le informazioni base dell'utente (Nome reale, Email).
      */
     public function update(ProfileUpdateRequest $request): RedirectResponse
-    {
-        $user = $request->user();
-        
-        // Forza il riempimento dei dati validati
-        $user->fill($request->validated());
+{
+    // Il comando fill() prende i dati validati dal file sopra e li mette nell'utente
+    $request->user()->fill($request->validated());
 
-        if ($user->isDirty('email')) {
-            $user->email_verified_at = null;
-        }
-
-        $user->save();
-
-        return Redirect::route('profile.edit')->with('message', 'Dati personali aggiornati!');
+    if ($request->user()->isDirty('email')) {
+        $request->user()->email_verified_at = null;
     }
+
+    // SALVATAGGIO REALE
+    $request->user()->save();
+
+    return Redirect::route('profile.edit')->with('message', 'Profilo aggiornato!');
+}
 
     /**
      * NUOVA FUNZIONE: Aggiorna il Nome della Squadra.
