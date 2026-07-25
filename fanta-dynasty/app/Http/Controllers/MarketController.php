@@ -10,14 +10,28 @@ use Illuminate\Support\Facades\DB;
 
 class MarketController extends Controller
 {
+    // --- PAGINA ROSA (Gestione Contratti) ---
+    public function myRosterPage() {
+        $user = auth()->user();
+        $participant = LeagueParticipant::where('user_id', $user->id)->first();
+        if (!$participant) return redirect()->route('dashboard');
+
+        return Inertia::render('Roster/Index', [
+            'myData' => $participant,
+            'myPlayers' => Roster::where('league_id', $participant->league_id)
+                                ->where('user_id', $user->id)
+                                ->with('player')
+                                ->get()
+        ]);
+    }
+
+    // --- PAGINA CALCIOMERCATO (Aste e Svincoli) ---
     public function auctions() {
         $user = auth()->user();
         $participant = LeagueParticipant::where('user_id', $user->id)->first();
         if (!$participant) return redirect()->route('dashboard');
         
         $league = League::find($participant->league_id);
-        
-        // 1. ESECUZIONE IMMEDIATA: Questo pulisce le aste SCADUTE singolarmente
         $this->processExpiredAuctions($league->id);
 
         $now = Carbon::now('Europe/Rome');
@@ -45,30 +59,24 @@ class MarketController extends Controller
         ]);
     }
 
+    // --- AZIONE: PUNTA / CHIAMA ---
     public function buy(Request $request) {
-        $request->validate(['player_id' => 'required', 'price' => 'nullable|integer']);
+        $request->validate(['player_id' => 'required', 'price' => 'nullable|integer', 'max_autobid' => 'nullable|integer']);
         $league = League::findOrFail($request->league_id);
         $now = Carbon::now('Europe/Rome');
         
-        if (!MarketSession::where('league_id', $league->id)->where('start_at', '<=', $now)->where('end_at', '>=', $now)->exists()) {
-            return back()->withErrors(['error' => 'Il mercato è chiuso!']);
-        }
+        $session = MarketSession::where('league_id', $league->id)->where('start_at', '<=', $now)->where('end_at', '>=', $now)->first();
+        if (!$session) return back()->withErrors(['error' => 'Mercato chiuso!']);
 
         $auction = Auction::where('league_id', $league->id)->where('real_player_id', $request->player_id)->where('is_finished', false)->first();
 
         if (!$auction) {
-            $session = MarketSession::where('league_id', $league->id)->where('start_at', '<=', $now)->where('end_at', '>=', $now)->first();
             if ($now->diffInMinutes($session->end_at, false) < 90) {
                 return back()->withErrors(['error' => 'Chiamate bloccate (manca meno di 1h 30m)']);
             }
-            // Creiamo l'asta con l'ora Italiana
             $auction = Auction::create([
-                'league_id' => $league->id, 
-                'real_player_id' => $request->player_id, 
-                'user_id' => auth()->id(),
-                'current_bid' => 0, 
-                'expires_at' => $now->addMinutes(90), 
-                'is_finished' => false
+                'league_id' => $league->id, 'real_player_id' => $request->player_id, 'user_id' => auth()->id(),
+                'current_bid' => 0, 'expires_at' => $now->addMinutes(90), 'is_finished' => false
             ]);
         }
 
@@ -79,7 +87,6 @@ class MarketController extends Controller
         $newBid = $request->price ?? ($auction->current_bid + 1);
         $this->executeBiddingWar($auction, auth()->id(), $newBid);
 
-        // TIME SHIFT
         if ($now->diffInSeconds($auction->expires_at, false) <= 60) {
             $auction->update(['expires_at' => $auction->expires_at->addSeconds(30)]);
         }
@@ -98,39 +105,64 @@ class MarketController extends Controller
         }
     }
 
+    // --- AZIONE: SVINCOLA ---
+    public function release(Request $request) {
+        $rosterItem = Roster::with('player')->findOrFail($request->roster_id);
+        $baseValue = $rosterItem->release_clause > 0 ? $rosterItem->release_clause : $rosterItem->purchase_price;
+        $refund = ceil($baseValue / 2);
+
+        $participant = LeagueParticipant::where('league_id', $rosterItem->league_id)->where('user_id', $rosterItem->user_id)->first();
+        if ($participant) $participant->increment('remaining_budget', $refund);
+        
+        $rosterItem->delete();
+        return back();
+    }
+
+    // --- AZIONE: AGGIORNA CONTRATTO ---
+    public function updateContract(Request $request) {
+        $request->validate(['roster_id' => 'required', 'new_years' => 'required|integer|min:1', 'clausola_investment' => 'required|integer|min:0']);
+        $rosterItem = Roster::findOrFail($request->roster_id);
+        $participant = LeagueParticipant::where('league_id', $rosterItem->league_id)->where('user_id', auth()->id())->first();
+        
+        $currentValue = $rosterItem->release_clause > 0 ? $rosterItem->release_clause : $rosterItem->purchase_price;
+        $rosterItem->update([
+            'contract_years' => $request->new_years,
+            'release_clause' => $currentValue + $request->clausola_investment
+        ]);
+
+        if ($request->clausola_investment > 0) {
+            $participant->decrement('remaining_budget', $request->clausola_investment);
+        }
+        return back();
+    }
+
+    public function history() {
+        $p = LeagueParticipant::where('user_id', auth()->id())->first();
+        return Inertia::render('Market/History', ['league' => League::find($p->league_id), 'movements' => Roster::where('league_id', $p->league_id)->with(['player', 'user'])->orderBy('created_at', 'desc')->get()]);
+    }
+
+    public function sessions() {
+        $p = LeagueParticipant::where('user_id', auth()->id())->first();
+        return Inertia::render('Market/Sessions', ['league' => League::find($p->league_id), 'sessions' => MarketSession::where('league_id', $p->league_id)->orderBy('start_at', 'desc')->get()]);
+    }
+
+    public function storeSession(Request $request) { MarketSession::create($request->all()); return back(); }
+    public function closeMarketNow(League $league) {
+        MarketSession::where('league_id', $league->id)->where('end_at', '>', now())->update(['end_at' => now()]);
+        Auction::where('league_id', $league->id)->where('is_finished', false)->delete();
+        return redirect()->route('market.auctions');
+    }
+
     private function processExpiredAuctions($leagueId) {
         $now = Carbon::now('Europe/Rome');
-        
         DB::transaction(function () use ($leagueId, $now) {
-            $expired = Auction::where('league_id', $leagueId)
-                ->where('is_finished', false)
-                ->where('expires_at', '<=', $now)
-                ->lockForUpdate()
-                ->get();
-
+            $expired = Auction::where('league_id', $leagueId)->where('is_finished', false)->where('expires_at', '<=', $now)->lockForUpdate()->get();
             foreach ($expired as $auc) {
-                Roster::create([
-                    'league_id' => $auc->league_id, 
-                    'user_id' => $auc->user_id, 
-                    'real_player_id' => $auc->real_player_id, 
-                    'purchase_price' => $auc->current_bid, 
-                    'contract_years' => 1
-                ]);
-                
+                Roster::create(['league_id' => $auc->league_id, 'user_id' => $auc->user_id, 'real_player_id' => $auc->real_player_id, 'purchase_price' => $auc->current_bid, 'contract_years' => 1]);
                 $p = LeagueParticipant::where('league_id', $auc->league_id)->where('user_id', $auc->user_id)->first();
                 if($p) $p->decrement('remaining_budget', $auc->current_bid);
-                
                 $auc->update(['is_finished' => true]);
             }
         });
     }
-
-    // Le altre funzioni (release, updateContract, history, sessions, storeSession, closeMarketNow) 
-    // rimangono identiche a quelle dell'ultimo messaggio... 
-    public function release(Request $request) { $rosterItem = Roster::with('player')->findOrFail($request->roster_id); $refund = ceil(($rosterItem->release_clause > 0 ? $rosterItem->release_clause : $rosterItem->purchase_price) / 2); LeagueParticipant::where('league_id', $rosterItem->league_id)->where('user_id', $rosterItem->user_id)->first()?->increment('remaining_budget', $refund); $rosterItem->delete(); return back(); }
-    public function updateContract(Request $request) { $rosterItem = Roster::findOrFail($request->roster_id); $rosterItem->update(['contract_years' => $request->new_years, 'release_clause' => ($rosterItem->release_clause ?: $rosterItem->purchase_price) + $request->clausola_investment]); if ($request->clausola_investment > 0) { LeagueParticipant::where('league_id', $rosterItem->league_id)->where('user_id', auth()->id())->first()->decrement('remaining_budget', $request->clausola_investment); } return back(); }
-    public function history() { $p = LeagueParticipant::where('user_id', auth()->id())->first(); return Inertia::render('Market/History', ['league' => League::find($p->league_id), 'movements' => Roster::where('league_id', $p->league_id)->with(['player', 'user'])->orderBy('created_at', 'desc')->get()]); }
-    public function sessions() { $p = LeagueParticipant::where('user_id', auth()->id())->first(); return Inertia::render('Market/Sessions', ['league' => League::find($p->league_id), 'sessions' => MarketSession::where('league_id', $p->league_id)->orderBy('start_at', 'desc')->get()]); }
-    public function storeSession(Request $request) { MarketSession::create($request->all()); return back(); }
-    public function closeMarketNow(League $league) { MarketSession::where('league_id', $league->id)->where('end_at', '>', now())->update(['end_at' => now()]); Auction::where('league_id', $league->id)->where('is_finished', false)->delete(); return redirect()->route('market.auctions'); }
 }
