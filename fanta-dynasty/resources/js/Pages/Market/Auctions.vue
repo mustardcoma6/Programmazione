@@ -1,6 +1,6 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head, useForm, router } from '@inertiajs/vue3'; // Aggiunto router
+import { Head, useForm, router } from '@inertiajs/vue3';
 import { onMounted, onUnmounted, ref, computed, reactive } from 'vue';
 
 const props = defineProps({
@@ -8,33 +8,24 @@ const props = defineProps({
     myData: Object, myRoster: Array, activeAuctions: Array, availablePlayers: Array
 });
 
-// Timer per il conto alla rovescia visivo
 const timeNow = ref(new Date());
 let interval;
 let refreshInterval;
 
 onMounted(() => { 
-    // Aggiorna i secondi a video
     interval = setInterval(() => { timeNow.value = new Date(); }, 1000); 
-
-    // TRUCCO SENIOR: Ogni 30 secondi ricarica i dati dal server per chiudere le aste scadute
-    refreshInterval = setInterval(() => {
-        router.reload({ preserveScroll: true });
-    }, 30000); 
+    refreshInterval = setInterval(() => { router.reload({ preserveScroll: true }); }, 30000); 
 });
 
-onUnmounted(() => {
-    clearInterval(interval);
-    clearInterval(refreshInterval);
-});
+onUnmounted(() => { clearInterval(interval); clearInterval(refreshInterval); });
 
 const getTimer = (date) => {
     const diff = new Date(date) - timeNow.value;
-    if (diff <= 0) return "SCADUTO";
+    if (diff <= 0) return "00:00:00";
     const h = Math.floor(diff / 3600000);
     const m = Math.floor((diff % 3600000) / 60000);
     const s = Math.floor((diff % 60000) / 1000);
-    return `${h}h ${m}m ${s}s`;
+    return `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
 };
 
 const canCallNewPlayers = computed(() => {
@@ -46,17 +37,22 @@ const canCallNewPlayers = computed(() => {
 const inputs = reactive({ prices: {}, autobids: {} });
 const bidForm = useForm({ player_id: null, league_id: props.league.id, price: null, max_autobid: null });
 
-const inviaOfferta = (targetId, isAuto = false) => {
+const inviaOfferta = (targetId, currentBid, isAuto = false) => {
+    const minBid = currentBid + 1;
     bidForm.player_id = targetId;
+
     if (isAuto) {
-        if (!inputs.autobids[targetId]) return alert("Inserisci offerta massima!");
+        const val = inputs.autobids[targetId];
+        if (!val || val < minBid) return alert(`L'autobid deve essere almeno ${minBid} cr!`);
         bidForm.price = null;
-        bidForm.max_autobid = inputs.autobids[targetId];
+        bidForm.max_autobid = val;
     } else {
-        if (!inputs.prices[targetId]) return alert("Inserisci un prezzo!");
-        bidForm.price = inputs.prices[targetId];
+        const val = inputs.prices[targetId];
+        if (!val || val < minBid) return alert(`Devi offrire almeno ${minBid} cr!`);
+        bidForm.price = val;
         bidForm.max_autobid = null;
     }
+
     bidForm.post(route('players.buy'), { 
         preserveScroll: true, 
         onSuccess: () => { inputs.prices[targetId] = null; inputs.autobids[targetId] = null; } 
@@ -86,10 +82,9 @@ const svincola = (item) => {
         <div class="py-12 max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-8">
             <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
                 
-                <!-- ROSA -->
                 <div class="lg:col-span-1 bg-white p-4 shadow rounded-xl border-t-4 border-blue-600">
                     <h3 class="font-black uppercase text-sm mb-4 flex justify-between">
-                        <span>La tua Rosa</span>
+                        <span>Rosa</span>
                         <span class="text-green-600 font-mono">{{ myData.remaining_budget }} cr</span>
                     </h3>
                     <div class="space-y-1 max-h-[500px] overflow-y-auto">
@@ -100,7 +95,6 @@ const svincola = (item) => {
                     </div>
                 </div>
 
-                <!-- ASTE ATTIVE -->
                 <div class="lg:col-span-2 space-y-4">
                     <h3 class="font-black text-orange-600 uppercase flex items-center gap-2">🔥 Aste in corso</h3>
                     <div v-for="auc in activeAuctions" :key="auc.id" class="bg-white p-6 shadow rounded-xl border-2 border-orange-400">
@@ -118,25 +112,24 @@ const svincola = (item) => {
 
                         <div v-if="isMarketOpen" class="mt-6 grid grid-cols-2 gap-4 border-t pt-4">
                             <div class="flex flex-col gap-1">
-                                <span class="text-[9px] font-bold text-gray-400 uppercase">Rilancio Manuale</span>
+                                <span class="text-[9px] font-bold text-gray-400 uppercase italic">Minimo rilancio: {{ auc.current_bid + 1 }}</span>
                                 <div class="flex gap-1">
-                                    <input type="number" v-model="inputs.prices[auc.real_player_id]" class="w-full rounded border-gray-300 text-xs" :placeholder="auc.current_bid + 1">
-                                    <button @click="inviaOfferta(auc.real_player_id)" class="bg-blue-600 text-white px-2 py-1 rounded font-bold text-[10px] uppercase">Vai</button>
+                                    <input type="number" v-model="inputs.prices[auc.real_player_id]" class="w-full rounded border-gray-300 text-xs" :min="auc.current_bid + 1" :placeholder="auc.current_bid + 1">
+                                    <button @click="inviaOfferta(auc.real_player_id, auc.current_bid)" class="bg-blue-600 text-white px-2 py-1 rounded font-bold text-[10px] uppercase">Vai</button>
                                 </div>
                             </div>
                             <div class="flex flex-col gap-1">
-                                <span class="text-[9px] font-bold text-orange-500 uppercase">Offerta Massima (Auto)</span>
+                                <span class="text-[9px] font-bold text-orange-500 uppercase italic">Tetto massimo</span>
                                 <div class="flex gap-1">
-                                    <input type="number" v-model="inputs.autobids[auc.real_player_id]" class="w-full rounded border-orange-200 text-xs" placeholder="Max">
-                                    <button @click="inviaOfferta(auc.real_player_id, true)" class="bg-orange-500 text-white px-2 py-1 rounded font-bold text-[10px] uppercase">Attiva</button>
+                                    <input type="number" v-model="inputs.autobids[auc.real_player_id]" class="w-full rounded border-orange-200 text-xs" :min="auc.current_bid + 1" placeholder="Max">
+                                    <button @click="inviaOfferta(auc.real_player_id, auc.current_bid, true)" class="bg-orange-500 text-white px-2 py-1 rounded font-bold text-[10px] uppercase">Auto</button>
                                 </div>
                             </div>
                         </div>
                     </div>
-                    <div v-if="activeAuctions.length === 0" class="text-center py-10 bg-white rounded-xl border-2 border-dashed text-gray-400 text-xs font-bold uppercase">Nessuna asta attiva.</div>
+                    <div v-if="activeAuctions.length === 0" class="text-center py-10 bg-white rounded-xl border-2 border-dashed text-gray-400 text-xs font-bold uppercase tracking-widest">Nessuna asta attiva.</div>
                 </div>
 
-                <!-- CHIAMA -->
                 <div class="lg:col-span-1 bg-white p-4 shadow rounded-xl border-t-4" :class="canCallNewPlayers ? 'border-green-600' : 'border-red-600'">
                     <h3 class="font-black uppercase text-sm mb-4 border-b">Chiama Giocatore</h3>
                     <div v-if="isMarketOpen && !canCallNewPlayers" class="bg-red-50 p-4 rounded text-red-600 text-[10px] font-bold uppercase mb-4 text-center border border-red-100">🛑 Chiamate bloccate.</div>
@@ -144,12 +137,12 @@ const svincola = (item) => {
                         <div v-for="p in availablePlayers" :key="p.id" class="flex justify-between items-center p-2 border-b text-[10px]">
                             <span class="font-bold uppercase">{{ p.name }}</span>
                             <div class="flex gap-1">
-                                <input type="number" v-model="inputs.prices[p.id]" class="w-10 p-0.5 text-[10px] border-gray-300 rounded" placeholder="1">
-                                <button @click="inviaOfferta(p.id)" class="bg-green-600 text-white px-1.5 py-1 rounded font-black text-[9px]">VAI</button>
+                                <input type="number" v-model="inputs.prices[p.id]" class="w-10 p-0.5 text-[10px] border-gray-300 rounded" placeholder="1" min="1">
+                                <button @click="inviaOfferta(p.id, 0)" class="bg-green-600 text-white px-1.5 py-1 rounded font-black text-[9px]">VAI</button>
                             </div>
                         </div>
                     </div>
-                    <div v-else-if="!isMarketOpen" class="text-center py-10 text-gray-400 text-[10px] font-bold italic">Mercato Chiuso</div>
+                    <div v-else-if="!isMarketOpen" class="text-center py-10 text-gray-400 text-[10px] font-bold italic uppercase tracking-tighter">Solo a mercato aperto</div>
                 </div>
             </div>
         </div>
