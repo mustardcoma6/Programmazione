@@ -11,6 +11,7 @@ Route::get('/', function () {
 });
 
 Route::middleware(['auth'])->group(function () {
+    Route::post('/profile/team-name', [ProfileController::class, 'updateTeamName'])->name('profile.team.update');
     
     // HOME
    Route::get('/dashboard', function () {
