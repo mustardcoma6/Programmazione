@@ -1,6 +1,6 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head, useForm } from '@inertiajs/vue3';
+import { Head, useForm, router } from '@inertiajs/vue3'; // Aggiunto router
 import { onMounted, onUnmounted, ref, computed, reactive } from 'vue';
 
 const props = defineProps({
@@ -8,19 +8,33 @@ const props = defineProps({
     myData: Object, myRoster: Array, activeAuctions: Array, availablePlayers: Array
 });
 
-// Timer
+// Timer per il conto alla rovescia visivo
 const timeNow = ref(new Date());
 let interval;
-onMounted(() => { interval = setInterval(() => { timeNow.value = new Date(); }, 1000); });
-onUnmounted(() => clearInterval(interval));
+let refreshInterval;
+
+onMounted(() => { 
+    // Aggiorna i secondi a video
+    interval = setInterval(() => { timeNow.value = new Date(); }, 1000); 
+
+    // TRUCCO SENIOR: Ogni 30 secondi ricarica i dati dal server per chiudere le aste scadute
+    refreshInterval = setInterval(() => {
+        router.reload({ preserveScroll: true });
+    }, 30000); 
+});
+
+onUnmounted(() => {
+    clearInterval(interval);
+    clearInterval(refreshInterval);
+});
 
 const getTimer = (date) => {
     const diff = new Date(date) - timeNow.value;
-    if (diff <= 0) return "00:00:00";
+    if (diff <= 0) return "SCADUTO";
     const h = Math.floor(diff / 3600000);
     const m = Math.floor((diff % 3600000) / 60000);
     const s = Math.floor((diff % 60000) / 1000);
-    return `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
+    return `${h}h ${m}m ${s}s`;
 };
 
 const canCallNewPlayers = computed(() => {
@@ -29,36 +43,23 @@ const canCallNewPlayers = computed(() => {
     return diffInMinutes >= 90;
 });
 
-// --- SOLUZIONE BUG REATTIVITÀ ---
-// Creiamo un contenitore per tutti gli input scritti dagli utenti
-const inputs = reactive({
-    prices: {}, // Qui salviamo i prezzi manuali
-    autobids: {} // Qui salviamo gli autobid
-});
-
+const inputs = reactive({ prices: {}, autobids: {} });
 const bidForm = useForm({ player_id: null, league_id: props.league.id, price: null, max_autobid: null });
 
 const inviaOfferta = (targetId, isAuto = false) => {
     bidForm.player_id = targetId;
-    
     if (isAuto) {
-        const val = inputs.autobids[targetId];
-        if (!val) return alert("Inserisci offerta massima!");
+        if (!inputs.autobids[targetId]) return alert("Inserisci offerta massima!");
         bidForm.price = null;
-        bidForm.max_autobid = val;
+        bidForm.max_autobid = inputs.autobids[targetId];
     } else {
-        const val = inputs.prices[targetId];
-        if (!val) return alert("Inserisci un prezzo!");
-        bidForm.price = val;
+        if (!inputs.prices[targetId]) return alert("Inserisci un prezzo!");
+        bidForm.price = inputs.prices[targetId];
         bidForm.max_autobid = null;
     }
-
     bidForm.post(route('players.buy'), { 
         preserveScroll: true, 
-        onSuccess: () => {
-            inputs.prices[targetId] = null;
-            inputs.autobids[targetId] = null;
-        } 
+        onSuccess: () => { inputs.prices[targetId] = null; inputs.autobids[targetId] = null; } 
     });
 };
 
@@ -69,32 +70,6 @@ const svincola = (item) => {
         releaseForm.post(route('players.release'), { preserveScroll: true });
     }
 };
-const creditiSvincolo = (item) => {
-    const valoreGiocatore = item.release_clause > 0
-        ? item.release_clause
-        : item.purchase_price;
-
-    return Math.ceil(valoreGiocatore / 2);
-};
-const ricercaGiocatore = ref('');
-const filtroRuolo = ref('');
-const filtroSquadra = ref('');
-
-const squadreDisponibili = computed(() => {
-    return [...new Set(props.availablePlayers.map(player => player.real_team))].sort();
-});
-
-const giocatoriFiltrati = computed(() => {
-    const ricerca = ricercaGiocatore.value.trim().toLowerCase();
-
-    return props.availablePlayers.filter(player => {
-        const nomeCorrisponde = player.name.toLowerCase().includes(ricerca);
-        const ruoloCorrisponde = !filtroRuolo.value || player.role === filtroRuolo.value;
-        const squadraCorrisponde = !filtroSquadra.value || player.real_team === filtroSquadra.value;
-
-        return nomeCorrisponde && ruoloCorrisponde && squadraCorrisponde;
-    });
-});
 </script>
 
 <template>
@@ -114,26 +89,13 @@ const giocatoriFiltrati = computed(() => {
                 <!-- ROSA -->
                 <div class="lg:col-span-1 bg-white p-4 shadow rounded-xl border-t-4 border-blue-600">
                     <h3 class="font-black uppercase text-sm mb-4 flex justify-between">
-                        <span>Rosa</span>
+                        <span>La tua Rosa</span>
                         <span class="text-green-600 font-mono">{{ myData.remaining_budget }} cr</span>
                     </h3>
                     <div class="space-y-1 max-h-[500px] overflow-y-auto">
                         <div v-for="item in myRoster" :key="item.id" class="p-2 bg-gray-50 border rounded text-[11px] flex justify-between items-center group">
-                        <span><b class="text-blue-600 mr-1">{{ item.player.role }}</b> {{ item.player.name }}</span>
-
-<div class="flex items-center gap-2">
-    <span v-if="isMarketOpen" class="text-green-600 font-bold whitespace-nowrap">
-        +{{ creditiSvincolo(item) }} cr
-    </span>
-
-    <button
-        v-if="isMarketOpen"
-        @click="svincola(item)"
-        class="text-red-400 hover:text-red-600 font-bold opacity-0 group-hover:opacity-100 transition"
-    >
-        ✕
-    </button>
-</div>    
+                            <span><b class="text-blue-600">{{ item.player.role }}</b> {{ item.player.name }}</span>
+                            <button v-if="isMarketOpen" @click="svincola(item)" class="text-red-400 font-bold opacity-0 group-hover:opacity-100 transition">✕</button>
                         </div>
                     </div>
                 </div>
@@ -174,62 +136,21 @@ const giocatoriFiltrati = computed(() => {
                     <div v-if="activeAuctions.length === 0" class="text-center py-10 bg-white rounded-xl border-2 border-dashed text-gray-400 text-xs font-bold uppercase">Nessuna asta attiva.</div>
                 </div>
 
-                <!-- CHIAMA GIOCATORE -->
+                <!-- CHIAMA -->
                 <div class="lg:col-span-1 bg-white p-4 shadow rounded-xl border-t-4" :class="canCallNewPlayers ? 'border-green-600' : 'border-red-600'">
                     <h3 class="font-black uppercase text-sm mb-4 border-b">Chiama Giocatore</h3>
-                    <div v-if="isMarketOpen && !canCallNewPlayers" class="bg-red-50 p-4 rounded text-red-600 text-[10px] font-bold uppercase mb-4 text-center border border-red-100">
-                        🛑 Chiamate bloccate.
+                    <div v-if="isMarketOpen && !canCallNewPlayers" class="bg-red-50 p-4 rounded text-red-600 text-[10px] font-bold uppercase mb-4 text-center border border-red-100">🛑 Chiamate bloccate.</div>
+                    <div v-if="isMarketOpen && canCallNewPlayers" class="space-y-1 max-h-[500px] overflow-y-auto">
+                        <div v-for="p in availablePlayers" :key="p.id" class="flex justify-between items-center p-2 border-b text-[10px]">
+                            <span class="font-bold uppercase">{{ p.name }}</span>
+                            <div class="flex gap-1">
+                                <input type="number" v-model="inputs.prices[p.id]" class="w-10 p-0.5 text-[10px] border-gray-300 rounded" placeholder="1">
+                                <button @click="inviaOfferta(p.id)" class="bg-green-600 text-white px-1.5 py-1 rounded font-black text-[9px]">VAI</button>
+                            </div>
+                        </div>
                     </div>
-                    <div v-if="isMarketOpen && canCallNewPlayers">
-    <div class="space-y-2 mb-3 pb-3 border-b">
-        <input
-            v-model="ricercaGiocatore"
-            type="text"
-            placeholder="Cerca calciatore..."
-            class="w-full rounded border-gray-300 text-xs"
-        >
-
-        <div class="grid grid-cols-2 gap-2">
-            <select v-model="filtroRuolo" class="rounded border-gray-300 text-xs">
-                <option value="">Tutti i ruoli</option>
-                <option value="P">Portieri</option>
-                <option value="D">Difensori</option>
-                <option value="C">Centrocampisti</option>
-                <option value="A">Attaccanti</option>
-            </select>
-
-            <select v-model="filtroSquadra" class="rounded border-gray-300 text-xs">
-                <option value="">Tutte le squadre</option>
-                <option v-for="squadra in squadreDisponibili" :key="squadra" :value="squadra">
-                    {{ squadra }}
-                </option>
-            </select>
-        </div>
-    </div>
-
-    <div class="space-y-1 max-h-[420px] overflow-y-auto">
-        <div v-for="p in giocatoriFiltrati" :key="p.id" class="flex justify-between items-center p-2 border-b text-[10px]">
-            <span class="font-bold uppercase">
-                <b class="text-blue-600 mr-1">{{ p.role }}</b>
-                {{ p.name }}
-            </span>
-
-            <div class="flex gap-1">
-                <input type="number" v-model="inputs.prices[p.id]" class="w-10 p-0.5 text-[10px] border-gray-300 rounded" placeholder="1">
-                <button @click="inviaOfferta(p.id)" class="bg-green-600 text-white px-1.5 py-1 rounded font-black text-[9px]">
-                    CHIAMA
-                </button>
-            </div>
-        </div>
-
-        <p v-if="giocatoriFiltrati.length === 0" class="py-4 text-center text-xs text-gray-400 italic">
-            Nessun calciatore trovato.
-        </p>
-    </div>
-</div>
                     <div v-else-if="!isMarketOpen" class="text-center py-10 text-gray-400 text-[10px] font-bold italic">Mercato Chiuso</div>
                 </div>
-
             </div>
         </div>
     </AuthenticatedLayout>

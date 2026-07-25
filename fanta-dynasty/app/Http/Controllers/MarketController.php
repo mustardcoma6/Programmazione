@@ -17,7 +17,7 @@ class MarketController extends Controller
         
         $league = League::find($participant->league_id);
         
-        // --- 1. CHIUSURA ASTE (Usando esplicitamente ora Italiana) ---
+        // 1. ESECUZIONE IMMEDIATA: Questo pulisce le aste SCADUTE singolarmente
         $this->processExpiredAuctions($league->id);
 
         $now = Carbon::now('Europe/Rome');
@@ -38,8 +38,10 @@ class MarketController extends Controller
             'myData' => $participant,
             'myRoster' => $myRoster,
             'availablePlayers' => $availablePlayers,
-            'activeAuctions' => Auction::where('league_id', $league->id)->where('is_finished', false)->with(['player', 'user'])->get(),
-            'serverTime' => $now->toDateTimeString() // Per controllo visivo
+            'activeAuctions' => Auction::where('league_id', $league->id)
+                                ->where('is_finished', false)
+                                ->with(['player', 'user'])
+                                ->get()
         ]);
     }
 
