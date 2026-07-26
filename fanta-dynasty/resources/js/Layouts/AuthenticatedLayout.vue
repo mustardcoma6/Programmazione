@@ -39,6 +39,12 @@ const isAdmin = leagues.length > 0 && leagues[0].admin_id === user.id;
                                     Rosa
                                 </NavLink>
                                 
+<NavLink :href="route('dashboard')" :active="route().current('dashboard')">Home</NavLink>
+<NavLink :href="route('teams.index')" :active="route().current('teams.index')">Squadre</NavLink>
+<!-- TASTO SOCIETÀ AGGIUNTO -->
+<NavLink :href="route('societa.index')" :active="route().current('societa.index')">Società</NavLink>
+<NavLink :href="route('roster.index')" :active="route().current('roster.index')">Rosa</NavLink>
+                                
                                 <!-- TENDINA CALCIOMERCATO (PER TUTTI) -->
                                 <div class="hidden sm:flex sm:items-center">
                                     <Dropdown align="left" width="48">
