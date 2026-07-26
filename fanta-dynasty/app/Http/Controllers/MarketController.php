@@ -123,8 +123,21 @@ class MarketController extends Controller
     }
 
     public function history() {
-        $p = LeagueParticipant::where('user_id', auth()->id())->first();
-        return Inertia::render('Market/History', ['league' => League::find($p->league_id), 'movements' => Roster::where('league_id', $p->league_id)->with(['player', 'user'])->orderBy('created_at', 'desc')->get()]);
+        $user = auth()->user();
+        $participant = LeagueParticipant::where('user_id', $user->id)->first();
+        
+        if (!$participant) return redirect()->route('dashboard');
+
+        // Prendiamo i movimenti della lega a cui appartiene l'utente
+        $movements = Roster::where('league_id', $participant->league_id)
+            ->with(['player', 'user'])
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return Inertia::render('Market/History', [
+            'league' => League::find($participant->league_id),
+            'movements' => $movements
+        ]);
     }
 
     public function sessions() {
