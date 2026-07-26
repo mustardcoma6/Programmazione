@@ -38,24 +38,21 @@ const tempRemainingCredits = computed(() => {
     return props.myData.remaining_budget - investment;
 });
 
+// --- FUNZIONE PER CALCOLARE LA DATA DI SCADENZA ---
+const getExpirationDate = (currentYears, added = 0) => {
+    const totalYears = currentYears + added;
+    const baseYear = 2026; // Anno corrente della stagione
+    return `30/06/${baseYear + totalYears}`;
+};
+
 const yearForm = useForm({ roster_id: null, new_years: 1, clausola_investment: 0 });
 
 const saveContract = (item) => {
     const yearsToAdd = addedYears.value[item.id];
-    const clausolaPlus = parseInt(addedClausola.value[item.id]) || 0;
     const finalTotalYears = item.contract_years + yearsToAdd;
+    const clausolaPlus = parseInt(addedClausola.value[item.id]) || 0;
     
-    const currentBase = item.release_clause > 0 ? item.release_clause : item.purchase_price;
-    const finalClausola = currentBase + clausolaPlus;
-    
-    const message = `REIEPILOGO OPERAZIONE:\n\n` +
-                    `- Giocatore: ${item.player.name}\n` +
-                    `- Nuovi Anni Totali: ${finalTotalYears}\n` +
-                    `- Nuova Clausola Totale: ${finalClausola} cr\n` +
-                    `- Investimento attuale: ${clausolaPlus} crediti\n\n` +
-                    `Confermi? L'azione è IRREVERSIBILE.`;
-    
-    if (confirm(message)) {
+    if (confirm(`Rinnovare ${item.player.name} fino al ${getExpirationDate(item.contract_years, yearsToAdd)}?`)) {
         yearForm.roster_id = item.id;
         yearForm.new_years = finalTotalYears;
         yearForm.clausola_investment = clausolaPlus;
@@ -64,7 +61,6 @@ const saveContract = (item) => {
             onSuccess: () => {
                 addedYears.value[item.id] = 0;
                 addedClausola.value[item.id] = 0;
-                alert("Rinnovo e Clausola salvati!");
             }
         });
     }
@@ -72,19 +68,17 @@ const saveContract = (item) => {
 </script>
 
 <template>
-    <Head title="Gestione Rosa" />
+    <Head title="La mia Rosa" />
     <AuthenticatedLayout>
         <template #header>
-            <h2 class="font-black text-xl uppercase tracking-tighter text-gray-800">Ufficio Contratti</h2>
+            <h2 class="font-black text-xl uppercase tracking-tighter text-gray-800">Gestione Contratti</h2>
         </template>
 
         <div class="py-12">
             <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
                 
-                <!-- DUE BANNER AFFIANCATI (ANNI E CREDITI RESIDUI) -->
+                <!-- DUE BANNER AFFIANCATI -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    
-                    <!-- BANNER 1: ANNI DISPONIBILI (SOLO RIMANENTI) -->
                     <div class="bg-white p-6 shadow rounded-xl border-l-8 border-blue-600 flex justify-between items-center">
                         <div>
                             <h3 class="text-xs font-black text-gray-400 uppercase tracking-widest">Anni Disponibili</h3>
@@ -97,7 +91,6 @@ const saveContract = (item) => {
                         </div>
                     </div>
 
-                    <!-- BANNER 2: CREDITI DISPONIBILI -->
                     <div class="bg-white p-6 shadow rounded-xl border-l-8 border-green-500 flex justify-between items-center">
                         <div>
                             <h3 class="text-xs font-black text-gray-400 uppercase tracking-widest">Crediti Disponibili</h3>
@@ -109,7 +102,6 @@ const saveContract = (item) => {
                             </p>
                         </div>
                     </div>
-
                 </div>
 
                 <!-- TABELLA ROSA -->
@@ -118,9 +110,10 @@ const saveContract = (item) => {
                         <thead>
                             <tr class="bg-gray-100 text-[10px] font-black uppercase text-gray-600 border-b">
                                 <th class="p-4">Calciatore</th>
-                                <th class="p-4 text-center">Clausola Rescissoria</th>
+                                <th class="p-4 text-center">Clausola</th>
                                 <th class="p-4 text-center">Anni</th>
-                                <th class="p-4 text-center">Rinnova</th>
+                                <th class="p-4 text-center">Scadenza</th> <!-- NUOVA COLONNA -->
+                                <th class="p-4 text-center">Rinnova (+ Anni)</th>
                                 <th class="p-4 text-center">Costo Orig.</th>
                             </tr>
                         </thead>
@@ -132,30 +125,32 @@ const saveContract = (item) => {
 
                                 <td class="p-4 text-center">
                                     <div v-if="addedYears[item.id] > 0" class="flex flex-col items-center gap-1">
-                                        <input 
-                                            type="number" 
-                                            v-model="addedClausola[item.id]" 
-                                            class="w-20 p-1 text-center border-orange-300 rounded text-xs font-bold"
-                                            placeholder="+ crediti"
-                                        >
-                                        <span class="text-[9px] font-black text-orange-600 uppercase">
-                                            Nuovo Tot: {{ (item.release_clause > 0 ? item.release_clause : item.purchase_price) + (parseInt(addedClausola[item.id]) || 0) }}
-                                        </span>
+                                        <input type="number" v-model="addedClausola[item.id]" class="w-20 p-1 text-center border-orange-300 rounded text-xs font-bold" placeholder="+ cr">
                                     </div>
-                                    <span v-else-if="item.release_clause > 0" class="font-mono font-black text-orange-500">
-                                        {{ item.release_clause }} cr
-                                    </span>
+                                    <span v-else-if="item.release_clause > 0" class="font-mono font-black text-orange-500">{{ item.release_clause }} cr</span>
                                     <span v-else class="text-xs font-bold text-gray-400 uppercase">No</span>
                                 </td>
 
-                                <td class="p-4 text-center font-mono font-bold text-gray-400">{{ item.contract_years }}</td>
+                                <td class="p-4 text-center">
+                                    <span class="font-mono font-bold text-gray-400 text-lg">{{ item.contract_years }}</span>
+                                </td>
+
+                                <!-- 1. COLONNA SCADENZA DINAMICA -->
+                                <td class="p-4 text-center">
+                                    <div class="flex flex-col">
+                                        <span class="font-mono font-bold" :class="addedYears[item.id] > 0 ? 'text-blue-600' : 'text-gray-600'">
+                                            {{ getExpirationDate(item.contract_years, addedYears[item.id]) }}
+                                        </span>
+                                        <span v-if="addedYears[item.id] > 0" class="text-[9px] font-black text-blue-400 uppercase">Anteprima</span>
+                                    </div>
+                                </td>
 
                                 <td class="p-4">
                                     <div class="flex flex-col items-center gap-2">
                                         <div class="flex items-center bg-gray-50 border-2 rounded-xl overflow-hidden" :class="addedYears[item.id] > 0 ? 'border-blue-500' : 'border-gray-200'">
                                             <button @click="changeAdded(item.id, -1)" :disabled="addedYears[item.id] === 0" class="px-3 py-1 text-red-600 font-bold disabled:opacity-0 transition">-</button>
                                             <div class="px-3 text-center min-w-[50px]">
-                                                <span class="font-black text-lg font-mono" :class="addedYears[item.id] > 0 ? 'text-blue-600' : 'text-gray-300'">+{{ addedYears[item.id] }}</span>
+                                                <span class="font-black text-xl font-mono" :class="addedYears[item.id] > 0 ? 'text-blue-600' : 'text-gray-300'">+{{ addedYears[item.id] }}</span>
                                             </div>
                                             <button @click="changeAdded(item.id, 1)" class="px-3 py-1 text-green-600 font-bold transition">+</button>
                                         </div>
