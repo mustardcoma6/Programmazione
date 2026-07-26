@@ -8,7 +8,13 @@ class LeagueParticipant extends Model
 {
     protected $fillable = ['league_id', 'user_id', 'team_name', 'remaining_budget', 'years_budget'];
 
-    // Relazione: Una squadra ha molti calciatori nel roster
+    // COLLEGAMENTO 1: Ogni partecipante è un Utente (Presidente)
+    public function user()
+    {
+        return $this->belongsTo(User::class, 'user_id');
+    }
+
+    // COLLEGAMENTO 2: Ogni partecipante ha una lista di calciatori
     public function roster()
     {
         return $this->hasMany(Roster::class, 'user_id', 'user_id');
