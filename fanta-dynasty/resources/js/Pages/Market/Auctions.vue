@@ -61,7 +61,23 @@ const inviaOfferta = (targetId, currentBid, isAuto = false) => {
 
 const releaseForm = useForm({ roster_id: null });
 const svincola = (item) => {
-    if (confirm(`Svincolare ${item.player.name}?`)) {
+    // Calcolo rimborsi per il messaggio
+    const baseValue = item.release_clause > 0 ? item.release_clause : item.purchase_price;
+    const creditRefund = Math.ceil(baseValue / 2);
+    
+    const yearsRefund = Math.floor(item.contract_years / 2);
+    const yearsLost = item.contract_years - yearsRefund;
+
+    const message = `ATTENZIONE - SVINCOLO DINASTICO:\n\n` +
+                    `Giocatore: ${item.player.name}\n` +
+                    `Anni Contratto attuali: ${item.contract_years}\n\n` +
+                    `Riceverai un rimborso di:\n` +
+                    `💰 ${creditRefund} Crediti (50% per eccesso)\n` +
+                    `⏳ ${yearsRefund} Anni (50% per difetto)\n\n` +
+                    `PENALE: Perderai ${yearsLost} anni dal tuo budget totale per sempre.\n\n` +
+                    `Vuoi procedere? L'azione è IRREVERSIBILE.`;
+    
+    if (confirm(message)) {
         releaseForm.roster_id = item.id;
         releaseForm.post(route('players.release'), { preserveScroll: true });
     }
