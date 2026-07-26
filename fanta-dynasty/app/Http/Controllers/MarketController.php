@@ -46,7 +46,10 @@ class MarketController extends Controller
             'myData' => $participant,
             'myRoster' => $myRoster,
             'availablePlayers' => $availablePlayers,
-            'activeAuctions' => Auction::where('league_id', $league->id)->where('is_finished', false)->with(['player', 'user'])->get()
+            'activeAuctions' => Auction::where('league_id', $league->id)
+                                ->where('is_finished', false)
+                                ->with(['player', 'user']) // Carica l'utente che ha fatto l'offerta
+                                ->get()
         ]);
     }
 
@@ -66,15 +69,13 @@ class MarketController extends Controller
             ->where('is_finished', false)
             ->first();
 
-        // 1. BLOCCO NUOVE CHIAMATE (Se il mercato è chiuso)
         if (!$auction && !$currentSession) {
-            return back()->withErrors(['error' => 'Il mercato è chiuso. Non puoi chiamare nuovi giocatori!']);
+            return back()->withErrors(['error' => 'Il mercato è chiuso!']);
         }
 
-        // 2. REGOLA 90 MINUTI (Solo per nuove chiamate)
         if (!$auction) {
             if ($now->diffInMinutes($currentSession->end_at, false) < 90) {
-                return back()->withErrors(['error' => 'Chiamate bloccate negli ultimi 90 minuti.']);
+                return back()->withErrors(['error' => 'Manca meno di 1h 30m!']);
             }
             $auction = Auction::create([
                 'league_id' => $league->id, 'real_player_id' => $request->player_id, 'user_id' => $user->id,
@@ -82,22 +83,18 @@ class MarketController extends Controller
             ]);
         }
 
-        // 3. LOGICA AUTOBID E RILANCIO
         if ($request->max_autobid) {
             Autobid::updateOrCreate(['auction_id' => $auction->id, 'user_id' => $user->id], ['max_bid' => $request->max_autobid]);
         }
 
         $newBid = $request->price ?? ($auction->current_bid + 1);
         if ($newBid <= $auction->current_bid && $auction->current_bid > 0) {
-            return back()->withErrors(['error' => 'Devi offrire almeno ' . ($auction->current_bid + 1)]);
+            return back()->withErrors(['error' => 'Offerta troppo bassa!']);
         }
 
         $this->executeBiddingWar($auction, $user->id, $newBid);
 
-        // --- 4. TIME SHIFT (Anti-Sniping) ---
-        // Se rilanci negli ultimi 30 secondi, l'asta scade tra 1 minuto esatto da ora
-        $secondsLeft = $now->diffInSeconds($auction->expires_at, false);
-        if ($secondsLeft <= 30 && $secondsLeft > 0) {
+        if ($now->diffInSeconds($auction->expires_at, false) <= 30) {
             $auction->update(['expires_at' => $now->copy()->addMinute()]);
         }
 
@@ -132,8 +129,16 @@ class MarketController extends Controller
         return back();
     }
 
-    public function history() { $p = LeagueParticipant::where('user_id', auth()->id())->first(); return Inertia::render('Market/History', ['league' => League::find($p->league_id), 'movements' => Roster::where('league_id', $p->league_id)->with(['player', 'user'])->orderBy('created_at', 'desc')->get()]); }
-    public function sessions() { $p = LeagueParticipant::where('user_id', auth()->id())->first(); return Inertia::render('Market/Sessions', ['league' => League::find($p->league_id), 'sessions' => MarketSession::where('league_id', $p->league_id)->orderBy('start_at', 'desc')->get()]); }
+    public function history() {
+        $p = LeagueParticipant::where('user_id', auth()->id())->first();
+        return Inertia::render('Market/History', ['league' => League::find($p->league_id), 'movements' => Roster::where('league_id', $p->league_id)->with(['player', 'user'])->orderBy('created_at', 'desc')->get()]);
+    }
+
+    public function sessions() {
+        $p = LeagueParticipant::where('user_id', auth()->id())->first();
+        return Inertia::render('Market/Sessions', ['league' => League::find($p->league_id), 'sessions' => MarketSession::where('league_id', $p->league_id)->orderBy('start_at', 'desc')->get()]);
+    }
+
     public function storeSession(Request $request) { MarketSession::create($request->all()); return back(); }
     public function closeMarketNow(League $league) {
         MarketSession::where('league_id', $league->id)->where('end_at', '>', now())->update(['end_at' => now()]);
