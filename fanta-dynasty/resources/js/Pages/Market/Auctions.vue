@@ -1,6 +1,6 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head, useForm, router } from '@inertiajs/vue3';
+import { Head, useForm, router, usePage } from '@inertiajs/vue3';
 import { onMounted, onUnmounted, ref, computed, reactive } from 'vue';
 
 const props = defineProps({
@@ -8,23 +8,31 @@ const props = defineProps({
     myData: Object, myRoster: Array, activeAuctions: Array, availablePlayers: Array
 });
 
-// --- LOGICA TIMER VISIVO (1 secondo) ---
+const user = usePage().props.auth.user;
+
+// --- LOGICA SMISTAMENTO ASTE ---
+const myAuctions = computed(() => {
+    return props.activeAuctions.filter(auc => auc.user_id === user.id);
+});
+
+const otherAuctions = computed(() => {
+    return props.activeAuctions.filter(auc => auc.user_id !== user.id);
+});
+
+// --- LOGICA TIMER E REFRESH ---
 const timeNow = ref(new Date());
 let interval;
 let refreshInterval;
 
 onMounted(() => { 
-    // Aggiorna il conto alla rovescia ogni secondo
     interval = setInterval(() => { timeNow.value = new Date(); }, 1000); 
-
-    // --- TRUCCO SENIOR: REFRESH CHIRURGICO OGNI 5 SECONDI ---
     refreshInterval = setInterval(() => {
         router.reload({ 
-            only: ['activeAuctions', 'myData', 'myRoster', 'availablePlayers'], // Aggiorna solo i dati necessari
-            preserveScroll: true, // Non muovere la pagina
-            preserveState: true,  // NON CANCELLARE quello che l'utente sta scrivendo negli input!
+            only: ['activeAuctions', 'myData', 'myRoster', 'availablePlayers'],
+            preserveScroll: true,
+            preserveState: true,
         });
-    }, 5000); // 5 secondi per un effetto quasi istantaneo
+    }, 5000); 
 });
 
 onUnmounted(() => {
@@ -103,11 +111,11 @@ const canCallNewPlayers = computed(() => {
             <div v-else><p class="text-xl font-bold text-red-500 uppercase italic">🛑 Mercato Chiuso</p></div>
         </div>
 
-        <div class="py-10 max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-8">
+        <div class="py-10 max-w-7xl mx-auto sm:px-6 lg:px-8">
             <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
                 
-                <!-- ROSA -->
-                <div class="lg:col-span-1 bg-white p-4 shadow rounded-xl border-t-4 border-blue-600">
+                <!-- 1. LA TUA ROSA -->
+                <div class="lg:col-span-1 bg-white p-4 shadow rounded-xl border-t-4 border-blue-600 h-fit">
                     <h3 class="font-black uppercase text-xs mb-4 flex justify-between">
                         <span>La tua Rosa</span>
                         <span class="text-blue-600 font-mono">{{ myData.remaining_budget }} cr</span>
@@ -120,62 +128,80 @@ const canCallNewPlayers = computed(() => {
                     </div>
                 </div>
 
-                <!-- ASTE ATTIVE -->
-                <div class="lg:col-span-2 space-y-4">
-                    <h3 class="font-black text-orange-600 uppercase flex items-center gap-2">
-                        <span class="relative flex h-3 w-3">
-                            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
-                            <span class="relative inline-flex rounded-full h-3 w-3 bg-orange-500"></span>
-                        </span>
-                        Aste in corso
-                    </h3>
+                <!-- 2. AREA ASTE (CENTRO) -->
+                <div class="lg:col-span-2 space-y-8">
                     
-                    <div v-for="auc in activeAuctions" :key="auc.id" class="bg-white p-6 shadow-lg rounded-xl border-2 border-orange-400 transition-all">
-                        <div class="flex justify-between items-start">
-                            <div>
-                                <span class="text-[10px] font-black uppercase bg-orange-100 text-orange-700 px-2 rounded">{{ auc.player.role }}</span>
-                                <h4 class="text-xl font-black uppercase text-gray-800">{{ auc.player.name }}</h4>
-                                <p class="text-xs text-gray-500">Miglior offerente: <span class="font-bold text-blue-600 uppercase">{{ auc.user.name }}</span></p>
-                            </div>
-                            <div class="text-right">
-                                <p class="text-3xl font-black text-orange-500 font-mono">{{ auc.current_bid }} cr</p>
-                                <p class="text-[10px] font-bold text-red-500 uppercase mt-1">⏱ Scade: {{ getTimer(auc.expires_at) }}</p>
-                            </div>
-                        </div>
-
-                        <div v-if="isMarketOpen" class="mt-4 grid grid-cols-2 gap-4 border-t pt-4">
-                            <div class="flex flex-col gap-1">
-                                <span class="text-[9px] font-bold text-gray-400 uppercase">Rilancio Manuale</span>
-                                <div class="flex gap-1">
-                                    <input type="number" v-model="inputs.prices[auc.real_player_id]" class="w-full rounded border-gray-300 text-xs" :placeholder="auc.current_bid + 1">
-                                    <button @click="inviaOfferta(auc.real_player_id, auc.current_bid)" class="bg-blue-600 text-white px-2 py-1 rounded font-bold text-[10px] uppercase hover:bg-blue-700 transition">Punta</button>
+                    <!-- SEZIONE LE MIE ASTE -->
+                    <div v-if="myAuctions.length > 0" class="space-y-4">
+                        <h3 class="font-black text-green-600 uppercase flex items-center gap-2 text-sm border-b pb-2">
+                            ✅ LE MIE ASTE (Stai vincendo)
+                        </h3>
+                        <div v-for="auc in myAuctions" :key="auc.id" class="bg-green-50 p-5 shadow-md rounded-xl border-2 border-green-400 transition-all">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <span class="text-[10px] font-black uppercase bg-green-200 text-green-700 px-2 rounded">{{ auc.player.role }}</span>
+                                    <h4 class="text-xl font-black uppercase text-gray-800">{{ auc.player.name }}</h4>
+                                    <p class="text-[10px] text-red-500 font-bold uppercase mt-1">⏱ Scade: {{ getTimer(auc.expires_at) }}</p>
                                 </div>
-                            </div>
-                            <div class="flex flex-col gap-1">
-                                <span class="text-[9px] font-bold text-orange-500 uppercase">Offerta Max (Auto)</span>
-                                <div class="flex gap-1">
-                                    <input type="number" v-model="inputs.autobids[auc.real_player_id]" class="w-full rounded border-orange-200 text-xs" placeholder="Tetto">
-                                    <button @click="inviaOfferta(auc.real_player_id, auc.current_bid, true)" class="bg-orange-500 text-white px-2 py-1 rounded font-bold text-[10px] uppercase hover:bg-orange-600 transition">Attiva</button>
+                                <div class="text-right">
+                                    <p class="text-2xl font-black text-green-600 font-mono">{{ auc.current_bid }} cr</p>
+                                    <span class="text-[9px] font-black bg-green-600 text-white px-2 py-0.5 rounded-full uppercase">Sei in testa</span>
                                 </div>
                             </div>
                         </div>
                     </div>
-                    <div v-if="activeAuctions.length === 0" class="text-center py-10 bg-white rounded-xl border-2 border-dashed text-gray-400 text-xs font-bold uppercase">Nessuna asta attiva.</div>
+
+                    <!-- SEZIONE TUTTE LE ASTE (ALTRE ASTE) -->
+                    <div class="space-y-4">
+                        <h3 class="font-black text-orange-600 uppercase flex items-center gap-2 text-sm border-b pb-2">
+                            🔥 TUTTE LE ASTE
+                        </h3>
+                        <div v-if="otherAuctions.length === 0 && myAuctions.length === 0" class="text-center py-10 bg-white rounded-xl border-2 border-dashed text-gray-400 text-xs font-bold uppercase">Nessuna asta attiva.</div>
+                        
+                        <div v-for="auc in otherAuctions" :key="auc.id" class="bg-white p-5 shadow-lg rounded-xl border-2 border-orange-400 transition-all">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <span class="text-[10px] font-black uppercase bg-orange-100 text-orange-700 px-2 rounded">{{ auc.player.role }}</span>
+                                    <h4 class="text-xl font-black uppercase text-gray-800">{{ auc.player.name }}</h4>
+                                    <p class="text-xs text-gray-500 italic">Leader: <span class="font-bold text-blue-600 uppercase">{{ auc.user.name }}</span></p>
+                                </div>
+                                <div class="text-right">
+                                    <p class="text-2xl font-black text-orange-500 font-mono">{{ auc.current_bid }} cr</p>
+                                    <p class="text-[10px] font-bold text-red-500 uppercase mt-1">⏱ Scade: {{ getTimer(auc.expires_at) }}</p>
+                                </div>
+                            </div>
+
+                            <div v-if="isMarketOpen" class="mt-4 grid grid-cols-2 gap-4 border-t pt-4">
+                                <div class="flex flex-col gap-1">
+                                    <span class="text-[9px] font-bold text-gray-400 uppercase italic">Rilancio (Min: {{ auc.current_bid + 1 }})</span>
+                                    <div class="flex gap-1">
+                                        <input type="number" v-model="inputs.prices[auc.real_player_id]" class="w-full rounded border-gray-300 text-xs" :placeholder="auc.current_bid + 1">
+                                        <button @click="inviaOfferta(auc.real_player_id, auc.current_bid)" class="bg-blue-600 text-white px-2 py-1 rounded font-bold text-[10px] uppercase">Vai</button>
+                                    </div>
+                                </div>
+                                <div class="flex flex-col gap-1">
+                                    <span class="text-[9px] font-bold text-orange-500 uppercase italic">Offerta Max (Auto)</span>
+                                    <div class="flex gap-1">
+                                        <input type="number" v-model="inputs.autobids[auc.real_player_id]" class="w-full rounded border-orange-200 text-xs" placeholder="Max">
+                                        <button @click="inviaOfferta(auc.real_player_id, auc.current_bid, true)" class="bg-orange-500 text-white px-2 py-1 rounded font-bold text-[10px] uppercase">Auto</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
-                <!-- CHIAMA GIOCATORE -->
-                <div class="lg:col-span-1 bg-white p-4 shadow rounded-xl border-t-4" :class="canCallNewPlayers ? 'border-green-600' : 'border-red-600'">
+                <!-- 3. CHIAMA GIOCATORE -->
+                <div class="lg:col-span-1 bg-white p-4 shadow rounded-xl border-t-4 h-fit" :class="canCallNewPlayers ? 'border-green-600' : 'border-red-600'">
                     <h3 class="font-black uppercase text-xs mb-4 border-b pb-2">Chiama Giocatore</h3>
-                    
                     <div v-if="isMarketOpen && canCallNewPlayers" class="space-y-4">
                         <input v-model="searchQuery" type="text" placeholder="Cerca nome..." class="w-full p-2 text-xs border-gray-300 rounded-lg bg-gray-50">
-                        
                         <div class="space-y-1 max-h-[400px] overflow-y-auto">
                             <div v-for="p in filteredPlayers" :key="p.id" class="flex justify-between items-center p-2 border-b text-[10px] hover:bg-gray-50 transition">
                                 <span class="font-bold uppercase"><b class="text-gray-400 mr-1">{{ p.role }}</b> {{ p.name }}</span>
                                 <div class="flex gap-1">
                                     <input type="number" v-model="inputs.prices[p.id]" class="w-10 p-0.5 text-[10px] border-gray-300 rounded" placeholder="1">
-                                    <button @click="inviaOfferta(p.id, 0)" class="bg-green-600 text-white px-1.5 py-1 rounded font-black text-[9px] hover:bg-green-700 transition">VAI</button>
+                                    <button @click="inviaOfferta(p.id, 0)" class="bg-green-600 text-white px-1.5 py-1 rounded font-black text-[9px]">VAI</button>
                                 </div>
                             </div>
                         </div>
