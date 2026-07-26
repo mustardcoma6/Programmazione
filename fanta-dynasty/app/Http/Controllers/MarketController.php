@@ -26,7 +26,6 @@ class MarketController extends Controller
         if (!$participant) return redirect()->route('dashboard');
         $league = League::find($participant->league_id);
         
-        // Chiudiamo le aste scadute
         $this->processExpiredAuctions($league->id);
 
         $now = Carbon::now('Europe/Rome');
@@ -57,57 +56,49 @@ class MarketController extends Controller
         $user = auth()->user();
         $now = Carbon::now('Europe/Rome');
         
-        // Verifichiamo se esiste una sessione di mercato aperta
-        $isMarketSessionActive = MarketSession::where('league_id', $league->id)
+        $currentSession = MarketSession::where('league_id', $league->id)
             ->where('start_at', '<=', $now)
             ->where('end_at', '>=', $now)
-            ->exists();
+            ->first();
 
-        // Cerchiamo l'asta esistente
         $auction = Auction::where('league_id', $league->id)
             ->where('real_player_id', $request->player_id)
             ->where('is_finished', false)
             ->first();
 
-        // --- REGOLA FONDAMENTALE ---
-        // 1. Se l'asta NON esiste e il mercato è CHIUSO, non puoi chiamare nuovi giocatori.
-        if (!$auction && !$isMarketSessionActive) {
+        // 1. BLOCCO NUOVE CHIAMATE (Se il mercato è chiuso)
+        if (!$auction && !$currentSession) {
             return back()->withErrors(['error' => 'Il mercato è chiuso. Non puoi chiamare nuovi giocatori!']);
         }
 
-        // 2. Se l'asta esiste, puoi rilanciare ANCHE se il mercato è chiuso (Overtime)
+        // 2. REGOLA 90 MINUTI (Solo per nuove chiamate)
         if (!$auction) {
-            // Nuova chiamata: controllo 90 minuti alla fine della sessione
-            $session = MarketSession::where('league_id', $league->id)->where('start_at', '<=', $now)->where('end_at', '>=', $now)->first();
-            if (now()->diffInMinutes($session->end_at, false) < 90) {
-                return back()->withErrors(['error' => 'Manca meno di 1h 30m alla fine del mercato, non puoi chiamare nuovi giocatori!']);
+            if ($now->diffInMinutes($currentSession->end_at, false) < 90) {
+                return back()->withErrors(['error' => 'Chiamate bloccate negli ultimi 90 minuti.']);
             }
             $auction = Auction::create([
                 'league_id' => $league->id, 'real_player_id' => $request->player_id, 'user_id' => $user->id,
-                'current_bid' => 0, 'expires_at' => now()->addMinutes(90), 'is_finished' => false
+                'current_bid' => 0, 'expires_at' => $now->addMinutes(90), 'is_finished' => false
             ]);
         }
 
-        // Gestione Autobid
+        // 3. LOGICA AUTOBID E RILANCIO
         if ($request->max_autobid) {
             Autobid::updateOrCreate(['auction_id' => $auction->id, 'user_id' => $user->id], ['max_bid' => $request->max_autobid]);
         }
 
-        // Esecuzione Rilancio
         $newBid = $request->price ?? ($auction->current_bid + 1);
-        
-        // Verifica rilancio minimo
         if ($newBid <= $auction->current_bid && $auction->current_bid > 0) {
             return back()->withErrors(['error' => 'Devi offrire almeno ' . ($auction->current_bid + 1)]);
         }
 
         $this->executeBiddingWar($auction, $user->id, $newBid);
 
-        // --- TIME SHIFT (Anti-Sniping) ---
-        // Se rilanci negli ultimi 30 secondi, aggiungi 60 secondi (1 minuto)
+        // --- 4. TIME SHIFT (Anti-Sniping) ---
+        // Se rilanci negli ultimi 30 secondi, l'asta scade tra 1 minuto esatto da ora
         $secondsLeft = $now->diffInSeconds($auction->expires_at, false);
         if ($secondsLeft <= 30 && $secondsLeft > 0) {
-            $auction->update(['expires_at' => $auction->expires_at->addSeconds(60)]);
+            $auction->update(['expires_at' => $now->copy()->addMinute()]);
         }
 
         return back();
