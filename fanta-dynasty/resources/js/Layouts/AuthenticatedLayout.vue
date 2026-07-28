@@ -10,6 +10,7 @@ const showingNavigationDropdown = ref(false);
 // Recuperiamo i dati dell'utente e della lega per i permessi
 const user = usePage().props.auth.user;
 const leagues = usePage().props.leagues || [];
+// Controllo Admin sicuro (evita crash se leagues è vuoto)
 const isAdmin = leagues.length > 0 && leagues[0].admin_id === user.id;
 </script>
 
@@ -27,25 +28,29 @@ const isAdmin = leagues.length > 0 && leagues[0].admin_id === user.id;
                                 </Link>
                             </div>
 
-                            <!-- LINK MENU PRINCIPALE -->
+                            <!-- UNICO BLOCCO DI LINK (NIENTE DOPPIONI) -->
                             <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
+                                <!-- 1. HOME -->
                                 <NavLink :href="route('dashboard')" :active="route().current('dashboard')">
                                     Home
                                 </NavLink>
+
+                                <!-- 2. SQUADRE -->
                                 <NavLink :href="route('teams.index')" :active="route().current('teams.index')">
                                     Squadre
                                 </NavLink>
+
+                                <!-- 3. SOCIETÀ -->
+                                <NavLink :href="route('societa.index')" :active="route().current('societa.index')">
+                                    Società
+                                </NavLink>
+
+                                <!-- 4. ROSA -->
                                 <NavLink :href="route('roster.index')" :active="route().current('roster.index')">
                                     Rosa
                                 </NavLink>
                                 
-<NavLink :href="route('dashboard')" :active="route().current('dashboard')">Home</NavLink>
-<NavLink :href="route('teams.index')" :active="route().current('teams.index')">Squadre</NavLink>
-<!-- TASTO SOCIETÀ AGGIUNTO -->
-<NavLink :href="route('societa.index')" :active="route().current('societa.index')">Società</NavLink>
-<NavLink :href="route('roster.index')" :active="route().current('roster.index')">Rosa</NavLink>
-                                
-                                <!-- TENDINA CALCIOMERCATO (PER TUTTI) -->
+                                <!-- 5. TENDINA CALCIOMERCATO -->
                                 <div class="hidden sm:flex sm:items-center">
                                     <Dropdown align="left" width="48">
                                         <template #trigger>
@@ -61,11 +66,12 @@ const isAdmin = leagues.length > 0 && leagues[0].admin_id === user.id;
                                     </Dropdown>
                                 </div>
 
+                                <!-- 6. SVINCOLATI -->
                                 <NavLink :href="route('players.index')" :active="route().current('players.index')">
                                     Svincolati
                                 </NavLink>
 
-                                <!-- TENDINA GESTIONE (SOLO ADMIN) -->
+                                <!-- 7. TENDINA GESTIONE (SOLO ADMIN) -->
                                 <div v-if="isAdmin" class="hidden sm:flex sm:items-center ms-4">
                                     <Dropdown align="right" width="48">
                                         <template #trigger>
@@ -82,7 +88,7 @@ const isAdmin = leagues.length > 0 && leagues[0].admin_id === user.id;
                             </div>
                         </div>
 
-                        <!-- MENU UTENTE -->
+                        <!-- MENU UTENTE (PROFILO / ESCI) -->
                         <div class="hidden sm:flex sm:items-center sm:ms-6">
                             <Dropdown align="right" width="48">
                                 <template #trigger>
@@ -100,6 +106,7 @@ const isAdmin = leagues.length > 0 && leagues[0].admin_id === user.id;
                 </div>
             </nav>
 
+            <!-- CONTENUTO PRINCIPALE -->
             <main>
                 <slot />
             </main>
