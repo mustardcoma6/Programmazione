@@ -10,7 +10,6 @@ const showingNavigationDropdown = ref(false);
 // Recuperiamo i dati dell'utente e della lega per i permessi
 const user = usePage().props.auth.user;
 const leagues = usePage().props.leagues || [];
-// Controllo Admin sicuro (evita crash se leagues è vuoto)
 const isAdmin = leagues.length > 0 && leagues[0].admin_id === user.id;
 </script>
 
@@ -28,29 +27,31 @@ const isAdmin = leagues.length > 0 && leagues[0].admin_id === user.id;
                                 </Link>
                             </div>
 
-                            <!-- UNICO BLOCCO DI LINK (NIENTE DOPPIONI) -->
+                            <!-- MENU DI NAVIGAZIONE -->
                             <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
                                 <!-- 1. HOME -->
                                 <NavLink :href="route('dashboard')" :active="route().current('dashboard')">
                                     Home
                                 </NavLink>
 
-                                <!-- 2. SQUADRE -->
-                                <NavLink :href="route('teams.index')" :active="route().current('teams.index')">
-                                    Squadre
-                                </NavLink>
-
-                                <!-- 3. SOCIETÀ -->
-                                <NavLink :href="route('societa.index')" :active="route().current('societa.index')">
-                                    Società
-                                </NavLink>
-
-                                <!-- 4. ROSA -->
-                                <NavLink :href="route('roster.index')" :active="route().current('roster.index')">
-                                    Rosa
-                                </NavLink>
+                                <!-- 2. TENDINA SOCIETÀ (Raggruppa Squadre, Rosa e Anagrafe) -->
+                                <div class="hidden sm:flex sm:items-center">
+                                    <Dropdown align="left" width="48">
+                                        <template #trigger>
+                                            <button class="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium leading-5 text-gray-500 hover:text-gray-700 hover:border-gray-300 focus:outline-none transition duration-150 ease-in-out h-full uppercase font-bold" :class="{'border-blue-500 text-gray-900': route().current('teams.*') || route().current('roster.*') || route().current('societa.*')}">
+                                                Società
+                                                <svg class="ms-2 -me-0.5 h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
+                                            </button>
+                                        </template>
+                                        <template #content>
+                                            <DropdownLink :href="route('societa.index')"> Anagrafe Lega </DropdownLink>
+                                            <DropdownLink :href="route('teams.index')"> Rose Avversarie </DropdownLink>
+                                            <DropdownLink :href="route('roster.index')"> La mia Rosa </DropdownLink>
+                                        </template>
+                                    </Dropdown>
+                                </div>
                                 
-                                <!-- 5. TENDINA CALCIOMERCATO -->
+                                <!-- 3. TENDINA CALCIOMERCATO -->
                                 <div class="hidden sm:flex sm:items-center">
                                     <Dropdown align="left" width="48">
                                         <template #trigger>
@@ -66,12 +67,12 @@ const isAdmin = leagues.length > 0 && leagues[0].admin_id === user.id;
                                     </Dropdown>
                                 </div>
 
-                                <!-- 6. SVINCOLATI -->
+                                <!-- 4. SVINCOLATI -->
                                 <NavLink :href="route('players.index')" :active="route().current('players.index')">
                                     Svincolati
                                 </NavLink>
 
-                                <!-- 7. TENDINA GESTIONE (SOLO ADMIN) -->
+                                <!-- 5. TENDINA GESTIONE (SOLO ADMIN) -->
                                 <div v-if="isAdmin" class="hidden sm:flex sm:items-center ms-4">
                                     <Dropdown align="right" width="48">
                                         <template #trigger>
@@ -88,7 +89,7 @@ const isAdmin = leagues.length > 0 && leagues[0].admin_id === user.id;
                             </div>
                         </div>
 
-                        <!-- MENU UTENTE (PROFILO / ESCI) -->
+                        <!-- MENU UTENTE -->
                         <div class="hidden sm:flex sm:items-center sm:ms-6">
                             <Dropdown align="right" width="48">
                                 <template #trigger>
@@ -106,10 +107,7 @@ const isAdmin = leagues.length > 0 && leagues[0].admin_id === user.id;
                 </div>
             </nav>
 
-            <!-- CONTENUTO PRINCIPALE -->
-            <main>
-                <slot />
-            </main>
+            <main><slot /></main>
         </div>
     </div>
 </template>
