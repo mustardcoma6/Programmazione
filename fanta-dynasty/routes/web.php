@@ -50,6 +50,11 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/admin/update-resources', [LeagueController::class, 'updateResources'])->name('admin.resources.update');
     
     Route::post('/admin/assign-manual', [LeagueController::class, 'assignManualPlayer'])->name('admin.assign.manual');
+    
+    // NUOVA ROTTA UNIFICATA PER CREDITI E ANNI
+    Route::post('/admin/update-resources', [LeagueController::class, 'updateResources'])->name('admin.resources.update');
+    
+    Route::post('/admin/assign-manual', [LeagueController::class, 'assignManualPlayer'])->name('admin.assign.manual');
 
     // SVINCOLATI
     Route::get('/players', [PlayerController::class, 'index'])->name('players.index');
