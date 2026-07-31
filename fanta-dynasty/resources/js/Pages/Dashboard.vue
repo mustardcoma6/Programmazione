@@ -1,7 +1,6 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head } from '@inertiajs/vue3';
-import { computed } from 'vue';
 
 const props = defineProps({
     leagues: Array, 
@@ -9,35 +8,26 @@ const props = defineProps({
     myPlayers: Array, 
     allParticipants: Array, 
     currentLineup: Object,
-    isMarketOpen: Boolean // Riceviamo il dato vero dal server
-});
-
-// CALCOLO ANNI LIBERI (Budget Totale - Anni Usati)
-const freeYears = computed(() => {
-    if (!props.myData) return 0;
-    const yearsUsed = props.myPlayers ? props.myPlayers.reduce((acc, p) => acc + p.contract_years, 0) : 0;
-    return props.myData.years_budget - yearsUsed;
+    isMarketOpen: Boolean
 });
 </script>
 
 <template>
     <Head title="Home" />
     <AuthenticatedLayout>
-        <template #header>
-            <div class="flex flex-col">
-                <!-- SALUTO PRESIDENTE -->
-                <h1 class="text-3xl font-black text-gray-900 tracking-tight italic">Benvenuto Pres!</h1>
-                <p class="text-xs text-gray-400 font-bold uppercase tracking-widest mt-1">Quadro Generale Società</p>
-            </div>
-        </template>
-
         <div class="py-10">
             <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-8">
                 
+                <!-- SALUTO PRESIDENTE (SPOSTATO NEL CORPO) -->
+                <div class="flex flex-col mb-4">
+                    <h1 class="text-4xl font-black text-gray-900 tracking-tighter italic">Benvenuto Pres!</h1>
+                    <p class="text-xs text-blue-600 font-bold uppercase tracking-[0.3em] mt-1 ml-1">Controllo Direzionale</p>
+                </div>
+
                 <!-- SE SEI IN UNA LEGA -->
                 <div v-if="leagues && leagues.length > 0" class="space-y-8">
                     
-                    <!-- BANNER STATUS E RISORSE -->
+                    <!-- 1. BANNER STATUS E RISORSE -->
                     <div class="bg-white p-8 shadow-xl rounded-3xl border-l-[12px] border-indigo-600">
                         <div class="flex flex-col lg:flex-row justify-between items-center gap-8">
                             <div class="flex-1 text-center lg:text-left">
@@ -47,7 +37,6 @@ const freeYears = computed(() => {
                                 <p class="text-gray-400 font-bold text-lg uppercase tracking-tighter">Lega: {{ leagues[0].name }}</p>
                                 
                                 <div class="mt-4 flex items-center justify-center lg:justify-start gap-3">
-                                    <!-- STATO MERCATO REALE -->
                                     <div class="px-4 py-1.5 rounded-full text-xs font-black uppercase flex items-center gap-2 border" 
                                          :class="isMarketOpen ? 'bg-green-50 text-green-600 border-green-200' : 'bg-red-50 text-red-600 border-red-200'">
                                         <span class="w-2 h-2 rounded-full" :class="isMarketOpen ? 'bg-green-500 animate-pulse' : 'bg-red-500'"></span>
@@ -57,21 +46,21 @@ const freeYears = computed(() => {
                                 </div>
                             </div>
 
-                            <!-- BOX RISORSE (VALORI ALLINEATI ALLA ROSA) -->
+                            <!-- BOX RISORSE (VALORI TOTALI) -->
                             <div class="flex gap-6">
                                 <div class="bg-gray-900 p-6 rounded-2xl text-center shadow-lg w-40 transform hover:scale-105 transition">
                                     <p class="text-[10px] font-black text-green-400 uppercase tracking-widest mb-1">Crediti</p>
                                     <p class="text-4xl font-black text-white font-mono">{{ myData?.remaining_budget }}</p>
                                 </div>
                                 <div class="bg-indigo-600 p-6 rounded-2xl text-center shadow-lg w-40 transform hover:scale-105 transition">
-                                    <p class="text-[10px] font-black text-indigo-200 uppercase tracking-widest mb-1">Anni Liberi</p>
-                                    <p class="text-4xl font-black text-white font-mono">{{ freeYears }}</p>
+                                    <p class="text-[10px] font-black text-indigo-200 uppercase tracking-widest mb-1">Budget Anni</p>
+                                    <p class="text-4xl font-black text-white font-mono">{{ myData?.years_budget }}</p>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- NAVIGAZIONE INTUITIVA -->
+                    <!-- 2. NAVIGAZIONE -->
                     <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
                         <a :href="route('players.index')" class="group bg-white p-6 rounded-2xl shadow-md border-b-4 border-gray-200 hover:border-blue-500 transition-all text-center">
                             <span class="text-4xl block mb-2 group-hover:scale-110 transition">📋</span>
@@ -94,8 +83,8 @@ const freeYears = computed(() => {
                         </a>
                     </div>
 
-                    <!-- FORMAZIONE (IL CAMPO) -->
-                    <div v-if="currentLineup" class="bg-green-700 p-8 shadow-2xl rounded-3xl border-[6px] border-green-800 text-white relative overflow-hidden">
+                    <!-- 3. FORMAZIONE -->
+                    <div v-if="currentLineup" class="bg-green-700 p-8 shadow-2xl rounded-2xl border-[6px] border-green-800 text-white relative overflow-hidden">
                         <div class="absolute inset-0 opacity-10 pointer-events-none">
                             <div class="w-full h-full border-2 border-white rounded-full scale-150 -translate-y-1/2"></div>
                         </div>
@@ -112,15 +101,15 @@ const freeYears = computed(() => {
                     </div>
                 </div>
 
-                <!-- CASO B: L'UTENTE NON HA ANCORA UNA LEGA -->
+                <!-- CASO B: SENZA LEGA -->
                 <div v-else class="bg-white p-16 text-center shadow-2xl rounded-3xl border-2 border-dashed border-indigo-200">
                     <div class="max-w-md mx-auto">
-                        <span class="text-7xl mb-6 block animate-bounce">🏟️</span>
+                        <span class="text-7xl mb-6 block animate-bounce">⚽</span>
                         <h3 class="text-3xl font-black text-gray-900 uppercase">Benvenuto Pres!</h3>
                         <p class="text-gray-500 mt-4 mb-10 text-lg">Inizia la tua carriera. Crea una lega o unisciti a una esistente.</p>
                         <div class="flex flex-col gap-4">
-                            <a :href="route('leagues.create')" class="bg-green-600 text-white py-5 rounded-2xl font-black uppercase tracking-widest hover:bg-green-700 transition shadow-lg shadow-green-200">➕ Crea una Nuova Lega</a>
-                            <a :href="route('leagues.join')" class="bg-orange-500 text-white py-5 rounded-2xl font-black uppercase tracking-widest hover:bg-orange-600 transition shadow-lg shadow-orange-200">🤝 Unisciti a una Lega</a>
+                            <a :href="route('leagues.create')" class="bg-green-600 text-white py-5 rounded-2xl font-black uppercase tracking-widest hover:bg-green-700 transition shadow-lg">➕ Crea una Nuova Lega</a>
+                            <a :href="route('leagues.join')" class="bg-orange-500 text-white py-5 rounded-2xl font-black uppercase tracking-widest hover:bg-orange-600 transition shadow-lg">🤝 Unisciti a una Lega</a>
                         </div>
                     </div>
                 </div>

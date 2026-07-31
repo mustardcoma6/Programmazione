@@ -36,7 +36,7 @@ const saveContract = (item) => {
     const finalTotalYears = item.contract_years + yearsToAdd;
     const clausolaPlus = parseInt(addedClausola.value[item.id]) || 0;
     
-    if (confirm(`Confermi il rinnovo per ${item.player.name}?`)) {
+    if (confirm(`Rinnovare ${item.player.name}?`)) {
         yearForm.roster_id = item.id;
         yearForm.new_years = finalTotalYears;
         yearForm.clausola_investment = clausolaPlus;
@@ -61,12 +61,12 @@ const saveContract = (item) => {
         <div class="py-12">
             <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
                 
-                <!-- DUE BANNER: Valori REALI impostati dall'Admin -->
+                <!-- DUE BANNER: VALORI ASSOLUTI -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div class="bg-white p-6 shadow rounded-xl border-l-8 border-blue-600 flex justify-between items-center">
                         <div>
                             <h3 class="text-xs font-black text-gray-400 uppercase tracking-widest">Budget Anni Totale</h3>
-                            <p class="text-sm text-gray-500 font-medium">Capacità massima della rosa</p>
+                            <p class="text-sm text-gray-500 font-medium">Assegnato dall'amministrazione</p>
                         </div>
                         <div class="text-right">
                             <p class="text-5xl font-black font-mono text-blue-600">
@@ -77,12 +77,12 @@ const saveContract = (item) => {
 
                     <div class="bg-white p-6 shadow rounded-xl border-l-8 border-green-500 flex justify-between items-center">
                         <div>
-                            <h3 class="text-xs font-black text-gray-400 uppercase tracking-widest">Crediti Disponibili</h3>
-                            <p class="text-sm text-gray-500 font-medium">Per mercato e clausole</p>
+                            <h3 class="text-xs font-black text-gray-400 uppercase tracking-widest">Crediti Totali</h3>
+                            <p class="text-sm text-gray-500 font-medium">Disponibili per ogni operazione</p>
                         </div>
                         <div class="text-right">
                             <p class="text-4xl font-black font-mono text-green-600">
-                                {{ myData.remaining_budget }}<span class="text-xl text-green-200"> cr</span>
+                                {{ myData.remaining_budget }} cr
                             </p>
                         </div>
                     </div>
