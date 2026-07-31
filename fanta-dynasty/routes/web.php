@@ -40,10 +40,11 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/admin/mercato/cronologia', [MarketController::class, 'history'])->name('market.history');
     Route::get('/admin/mercato/sessioni', [MarketController::class, 'sessions'])->name('market.sessions');
     
-    // --- NUOVA ROTTA: GESTIONE ROSE (SOLO ADMIN) ---
+    // GESTIONE ROSE E CREDITI (ADMIN)
     Route::get('/admin/gestione-rose', [LeagueController::class, 'manageRosters'])->name('admin.rosters');
     Route::post('/admin/assign-player', [LeagueController::class, 'assignPlayer'])->name('admin.assign');
     Route::post('/admin/remove-player', [LeagueController::class, 'removePlayer'])->name('admin.remove');
+    Route::post('/admin/update-credits', [LeagueController::class, 'updateCredits'])->name('admin.credits.update'); // NUOVA
 
     // SVINCOLATI
     Route::get('/players', [PlayerController::class, 'index'])->name('players.index');
