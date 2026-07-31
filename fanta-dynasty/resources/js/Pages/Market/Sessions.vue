@@ -7,7 +7,7 @@ const props = defineProps({ league: Object, sessions: Array });
 const form = useForm({ 
     start_at: '', 
     end_at: '',
-    auction_time: '01:30', // Iniziamo con 1 ora e 30 minuti di default
+    auction_time: '01:30',
     roles: ['P', 'D', 'C', 'A']
 });
 
@@ -16,12 +16,11 @@ const submit = () => {
         preserveScroll: true,
         onSuccess: () => {
             form.reset('start_at', 'end_at');
-            alert("✅ Sessione programmata correttamente!");
+            alert("✅ Sessione salvata!");
         }
     });
 };
 
-// Funzione per mostrare i minuti in formato leggibile (es: 150m -> 02h 30m)
 const formatDuration = (totalMinutes) => {
     const hours = Math.floor(totalMinutes / 60);
     const minutes = totalMinutes % 60;
@@ -45,69 +44,54 @@ const stopMarket = () => {
                 <form @submit.prevent="submit" class="space-y-6">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
-                            <label class="block text-[10px] font-black uppercase text-gray-400 mb-1">Inizio Mercato</label>
+                            <label class="block text-[10px] font-black uppercase text-gray-400 mb-1">Inizio</label>
                             <input type="datetime-local" v-model="form.start_at" class="w-full rounded-xl border-gray-300">
                         </div>
                         <div>
-                            <label class="block text-[10px] font-black uppercase text-gray-400 mb-1">Fine Mercato</label>
+                            <label class="block text-[10px] font-black uppercase text-gray-400 mb-1">Fine</label>
                             <input type="datetime-local" v-model="form.end_at" class="w-full rounded-xl border-gray-300">
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
-                            <label class="block text-[10px] font-black uppercase text-gray-400 mb-1">Durata Asta (Ore : Minuti)</label>
-                            <!-- INPUT ORA:MINUTI -->
+                            <label class="block text-[10px] font-black uppercase text-gray-400 mb-1">Durata Asta (Ore:Min)</label>
                             <input type="time" v-model="form.auction_time" class="w-full rounded-xl border-gray-300 font-mono font-bold text-lg">
                         </div>
                         <div>
                             <label class="block text-[10px] font-black uppercase text-gray-400 mb-2">Ruoli Abilitati</label>
                             <div class="flex gap-4">
                                 <label v-for="r in ['P','D','C','A']" :key="r" class="flex items-center gap-1 cursor-pointer">
-                                    <input type="checkbox" :value="r" v-model="form.roles" class="rounded border-gray-300 text-blue-600">
+                                    <input type="checkbox" :value="r" v-model="form.roles" class="rounded text-blue-600">
                                     <span class="font-black text-sm">{{ r }}</span>
                                 </label>
                             </div>
                         </div>
                     </div>
                     
-                    <button :disabled="form.processing" class="w-full bg-blue-600 text-white py-4 rounded-xl font-black uppercase shadow-lg hover:bg-blue-700 transition">
-                        Aggiungi al Calendario
-                    </button>
+                    <button :disabled="form.processing" class="w-full bg-blue-600 text-white py-4 rounded-xl font-black uppercase shadow-lg">Aggiungi al Calendario</button>
                 </form>
 
                 <button @click="stopMarket" class="mt-8 w-full text-red-600 text-[10px] font-black uppercase hover:underline">⚠️ Emergenza: Chiudi tutto</button>
             </div>
 
-            <!-- CRONOLOGIA -->
             <div class="bg-white shadow rounded-2xl overflow-hidden border">
-                <table class="w-full text-left">
-                    <thead class="bg-gray-50 border-b">
-                        <tr class="text-[10px] font-black uppercase text-gray-400">
+                <table class="w-full text-left text-sm">
+                    <thead>
+                        <tr class="bg-gray-50 text-[10px] font-black uppercase text-gray-400">
                             <th class="p-4">Periodo</th>
                             <th class="p-4 text-center">Durata Asta</th>
                             <th class="p-4 text-center">Ruoli</th>
-                            <th class="p-4 text-right">Stato</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <tr v-for="s in sessions" :key="s.id" class="border-b last:border-0 hover:bg-gray-50 transition">
+                        <tr v-for="s in sessions" :key="s.id" class="border-b">
                             <td class="p-4">
-                                <p class="text-xs font-bold">{{ new Date(s.start_at).toLocaleString() }}</p>
-                                <p class="text-[10px] text-gray-400">{{ new Date(s.end_at).toLocaleString() }}</p>
+                                <p class="font-bold">{{ new Date(s.start_at).toLocaleString() }}</p>
+                                <p class="text-gray-400 text-xs">{{ new Date(s.end_at).toLocaleString() }}</p>
                             </td>
-                            <!-- DISPLAY FORMATTATO -->
-                            <td class="p-4 text-center font-mono font-black text-blue-600">
-                                {{ formatDuration(s.auction_duration) }}
-                            </td>
-                            <td class="p-4 text-center">
-                                <span class="bg-gray-200 px-2 py-0.5 rounded text-[10px] font-black uppercase">{{ s.allowed_roles }}</span>
-                            </td>
-                            <td class="p-4 text-right">
-                                <span v-if="new Date() > new Date(s.end_at)" class="text-[9px] bg-gray-100 px-2 py-0.5 rounded font-black uppercase text-gray-400">Chiuso</span>
-                                <span v-else-if="new Date() >= new Date(s.start_at)" class="text-[9px] bg-green-100 px-2 py-0.5 rounded font-black uppercase text-green-600">Attivo</span>
-                                <span v-else class="text-[9px] bg-blue-100 px-2 py-0.5 rounded font-black uppercase text-blue-500">Programmato</span>
-                            </td>
+                            <td class="p-4 text-center font-mono font-bold text-blue-600">{{ formatDuration(s.auction_duration) }}</td>
+                            <td class="p-4 text-center uppercase font-black text-gray-400 text-[10px]">{{ s.allowed_roles }}</td>
                         </tr>
                     </tbody>
                 </table>
