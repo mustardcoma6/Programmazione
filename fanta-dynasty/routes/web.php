@@ -64,6 +64,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/leagues/{league}/update-market', [LeagueController::class, 'updateMarket'])->name('leagues.market.update');
     Route::get('/lineup', [LineupController::class, 'index'])->name('lineup.index');
     Route::post('/lineup', [LineupController::class, 'store'])->name('lineup.store');
+    Route::post('/admin/assign-manual', [LeagueController::class, 'assignManualPlayer'])->name('admin.assign.manual');
 
     // PROFILO
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');

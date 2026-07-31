@@ -53,7 +53,47 @@ class LeagueController extends Controller
         'teams' => $teams,
         'availablePlayers' => $availablePlayers
     ]);
+    // ASSEGNAZIONE MANUALE (CREA GIOCATORE DA ZERO)
+    public function assignManualPlayer(Request $request)
+    {
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'role' => 'required|in:P,D,C,A',
+            'real_team' => 'required|string',
+            'user_id' => 'required|exists:users,id',
+            'price' => 'required|integer|min:0',
+            'years' => 'required|integer|min:1',
+        ]);
+
+        $league = auth()->user()->leagues()->first();
+
+        // 1. Creiamo il giocatore nel listone generale (RealPlayer)
+        $newPlayer = \App\Models\RealPlayer::create([
+            'name' => $request->name,
+            'role' => $request->role,
+            'real_team' => $request->real_team,
+            'initial_value' => 1
+        ]);
+
+        // 2. Lo assegniamo alla squadra nel Roster
+        \App\Models\Roster::create([
+            'league_id' => $league->id,
+            'user_id' => $request->user_id,
+            'real_player_id' => $newPlayer->id,
+            'purchase_price' => $request->price,
+            'contract_years' => $request->years
+        ]);
+
+        // 3. Scaliamo i crediti
+        $p = \App\Models\LeagueParticipant::where('league_id', $league->id)->where('user_id', $request->user_id)->first();
+        if ($p) {
+            $p->decrement('remaining_budget', $request->price);
+        }
+
+        return back()->with('message', 'Giocatore creato e assegnato!');
+    }
 }
+
 
     // Altre funzioni... (Incolla qui sotto le altre funzioni del file per non cancellarle)
     public function societaIndex() { $user = auth()->user(); $league = $user->leagues()->first(); if (!$league) return redirect()->route('dashboard'); $participants = LeagueParticipant::where('league_id', $league->id)->with('user')->get(); foreach ($participants as $p) { $p->years_used = Roster::where('league_id', $league->id)->where('user_id', $p->user_id)->sum('contract_years'); } return Inertia::render('Societa/Index', ['league' => $league, 'participants' => $participants]); }
