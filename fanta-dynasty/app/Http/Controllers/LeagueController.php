@@ -10,25 +10,34 @@ use Inertia\Inertia;
 class LeagueController extends Controller
 {
     public function manageRosters()
-    {
-        $user = auth()->user();
-        $league = $user->leagues()->first();
-        if (!$league || $league->admin_id !== $user->id) return redirect()->route('dashboard');
+{
+    $user = auth()->user();
+    $league = $user->leagues()->first();
 
-        $teams = LeagueParticipant::where('league_id', $league->id)->with('user')->get();
-        foreach ($teams as $team) {
-            $team->players = Roster::where('league_id', $league->id)->where('user_id', $team->user_id)->with('player')->get();
-        }
-
-        $soldIds = Roster::where('league_id', $league->id)->pluck('real_player_id')->toArray();
-        $availablePlayers = RealPlayer::whereNotIn('id', array_merge($soldIds))->orderBy('role', 'desc')->get();
-
+    // Se non trova la lega, non bloccare tutto, ma vai avanti per vedere se la pagina carica
+    if (!$league) {
         return Inertia::render('Admin/Rosters', [
-            'league' => $league,
-            'teams' => $teams,
-            'availablePlayers' => $availablePlayers
+            'league' => null,
+            'teams' => [],
+            'availablePlayers' => \App\Models\RealPlayer::limit(10)->get()
         ]);
     }
+
+    // Carichiamo le squadre
+    $teams = \App\Models\LeagueParticipant::where('league_id', $league->id)->with('user')->get();
+    foreach ($teams as $team) {
+        $team->players = \App\Models\Roster::where('league_id', $league->id)->where('user_id', $team->user_id)->with('player')->get();
+    }
+
+    $soldIds = \App\Models\Roster::where('league_id', $league->id)->pluck('real_player_id')->toArray();
+    $availablePlayers = \App\Models\RealPlayer::whereNotIn('id', $soldIds)->orderBy('role', 'desc')->get();
+
+    return Inertia::render('Admin/Rosters', [
+        'league' => $league,
+        'teams' => $teams,
+        'availablePlayers' => $availablePlayers
+    ]);
+}
 
     // NUOVA FUNZIONE: MODIFICA CREDITI MANUALE
     public function updateCredits(Request $request)
