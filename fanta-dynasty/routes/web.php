@@ -4,7 +4,6 @@ use App\Http\Controllers\{ProfileController, LeagueController, PlayerController,
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
-
 Route::get('/', function () { return Inertia::render('Welcome'); });
 
 Route::middleware(['auth'])->group(function () {
@@ -41,11 +40,13 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/admin/mercato/cronologia', [MarketController::class, 'history'])->name('market.history');
     Route::get('/admin/mercato/sessioni', [MarketController::class, 'sessions'])->name('market.sessions');
     
-    // GESTIONE ROSE E CREDITI (ADMIN)
+    // GESTIONE ADMIN (Rose, Crediti, Sessioni)
     Route::get('/admin/gestione-rose', [LeagueController::class, 'manageRosters'])->name('admin.rosters');
+    Route::get('/admin/gestione-crediti', [LeagueController::class, 'manageCredits'])->name('admin.credits'); // NUOVA
     Route::post('/admin/assign-player', [LeagueController::class, 'assignPlayer'])->name('admin.assign');
     Route::post('/admin/remove-player', [LeagueController::class, 'removePlayer'])->name('admin.remove');
-    Route::post('/admin/update-credits', [LeagueController::class, 'updateCredits'])->name('admin.credits.update'); // NUOVA
+    Route::post('/admin/update-credits', [LeagueController::class, 'updateCredits'])->name('admin.credits.update');
+    Route::post('/admin/assign-manual', [LeagueController::class, 'assignManualPlayer'])->name('admin.assign.manual');
 
     // SVINCOLATI
     Route::get('/players', [PlayerController::class, 'index'])->name('players.index');
@@ -55,7 +56,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/release-player', [MarketController::class, 'release'])->name('players.release');
     Route::post('/market/update-years', [MarketController::class, 'updateContract'])->name('market.update-years');
 
-    // GESTIONE LEGA E CAMPO
+    // LEGA E CAMPO
     Route::get('/leagues/create', [LeagueController::class, 'create'])->name('leagues.create');
     Route::post('/leagues', [LeagueController::class, 'store'])->name('leagues.store');
     Route::get('/leagues/join', [LeagueController::class, 'join'])->name('leagues.join');
@@ -64,7 +65,6 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/leagues/{league}/update-market', [LeagueController::class, 'updateMarket'])->name('leagues.market.update');
     Route::get('/lineup', [LineupController::class, 'index'])->name('lineup.index');
     Route::post('/lineup', [LineupController::class, 'store'])->name('lineup.store');
-    Route::post('/admin/assign-manual', [LeagueController::class, 'assignManualPlayer'])->name('admin.assign.manual');
 
     // PROFILO
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
