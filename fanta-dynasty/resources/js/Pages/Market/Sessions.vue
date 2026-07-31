@@ -7,8 +7,8 @@ const props = defineProps({ league: Object, sessions: Array });
 const form = useForm({ 
     start_at: '', 
     end_at: '',
-    auction_duration: 90, // Default 90 minuti
-    roles: ['P', 'D', 'C', 'A'] // Tutti selezionati di base
+    auction_time: '01:30', // Iniziamo con 1 ora e 30 minuti di default
+    roles: ['P', 'D', 'C', 'A']
 });
 
 const submit = () => {
@@ -16,43 +16,49 @@ const submit = () => {
         preserveScroll: true,
         onSuccess: () => {
             form.reset('start_at', 'end_at');
-            alert("Sessione creata con successo!");
+            alert("✅ Sessione programmata correttamente!");
         }
     });
 };
 
+// Funzione per mostrare i minuti in formato leggibile (es: 150m -> 02h 30m)
+const formatDuration = (totalMinutes) => {
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    return `${hours.toString().padStart(2, '0')}h ${minutes.toString().padStart(2, '0')}m`;
+};
+
 const stopMarket = () => {
-    if(confirm("Chiudere mercato e annullare aste attive?")) {
+    if(confirm("Chiudere il mercato e annullare le aste attive?")) {
         useForm({}).post(route('market.close-all', props.league.id));
     }
 };
 </script>
 
 <template>
-    <Head title="Gestione Sessioni" />
+    <Head title="Calendario" />
     <AuthenticatedLayout>
-        <template #header><h2 class="font-black text-xl uppercase">Calendario Mercato</h2></template>
+        <template #header><h2 class="font-black text-xl uppercase">Gestione Sessioni</h2></template>
         
         <div class="py-12 max-w-4xl mx-auto px-4 space-y-8">
             <div class="bg-white p-6 shadow-xl rounded-2xl border-t-4 border-blue-600">
-                <h3 class="font-bold mb-6 uppercase text-gray-700">Programma Nuova Sessione</h3>
-                
                 <form @submit.prevent="submit" class="space-y-6">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
-                            <label class="block text-[10px] font-black uppercase text-gray-400 mb-1">Inizio</label>
+                            <label class="block text-[10px] font-black uppercase text-gray-400 mb-1">Inizio Mercato</label>
                             <input type="datetime-local" v-model="form.start_at" class="w-full rounded-xl border-gray-300">
                         </div>
                         <div>
-                            <label class="block text-[10px] font-black uppercase text-gray-400 mb-1">Fine</label>
+                            <label class="block text-[10px] font-black uppercase text-gray-400 mb-1">Fine Mercato</label>
                             <input type="datetime-local" v-model="form.end_at" class="w-full rounded-xl border-gray-300">
                         </div>
                     </div>
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
                         <div>
-                            <label class="block text-[10px] font-black uppercase text-gray-400 mb-1">Durata singola asta (Minuti)</label>
-                            <input type="number" v-model="form.auction_duration" class="w-full rounded-xl border-gray-300 font-mono font-bold" min="1">
+                            <label class="block text-[10px] font-black uppercase text-gray-400 mb-1">Durata Asta (Ore : Minuti)</label>
+                            <!-- INPUT ORA:MINUTI -->
+                            <input type="time" v-model="form.auction_time" class="w-full rounded-xl border-gray-300 font-mono font-bold text-lg">
                         </div>
                         <div>
                             <label class="block text-[10px] font-black uppercase text-gray-400 mb-2">Ruoli Abilitati</label>
@@ -90,9 +96,12 @@ const stopMarket = () => {
                                 <p class="text-xs font-bold">{{ new Date(s.start_at).toLocaleString() }}</p>
                                 <p class="text-[10px] text-gray-400">{{ new Date(s.end_at).toLocaleString() }}</p>
                             </td>
-                            <td class="p-4 text-center font-mono font-black text-blue-600">{{ s.auction_duration }}m</td>
+                            <!-- DISPLAY FORMATTATO -->
+                            <td class="p-4 text-center font-mono font-black text-blue-600">
+                                {{ formatDuration(s.auction_duration) }}
+                            </td>
                             <td class="p-4 text-center">
-                                <span class="bg-gray-200 px-2 py-0.5 rounded text-[10px] font-black">{{ s.allowed_roles }}</span>
+                                <span class="bg-gray-200 px-2 py-0.5 rounded text-[10px] font-black uppercase">{{ s.allowed_roles }}</span>
                             </td>
                             <td class="p-4 text-right">
                                 <span v-if="new Date() > new Date(s.end_at)" class="text-[9px] bg-gray-100 px-2 py-0.5 rounded font-black uppercase text-gray-400">Chiuso</span>
