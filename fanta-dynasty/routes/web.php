@@ -40,12 +40,15 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/admin/mercato/cronologia', [MarketController::class, 'history'])->name('market.history');
     Route::get('/admin/mercato/sessioni', [MarketController::class, 'sessions'])->name('market.sessions');
     
-    // GESTIONE ADMIN (Rose, Crediti, Sessioni)
+    // GESTIONE ADMIN (Rose, Crediti/Anni, Sessioni)
     Route::get('/admin/gestione-rose', [LeagueController::class, 'manageRosters'])->name('admin.rosters');
-    Route::get('/admin/gestione-crediti', [LeagueController::class, 'manageCredits'])->name('admin.credits'); // NUOVA
+    Route::get('/admin/gestione-budget', [LeagueController::class, 'manageCredits'])->name('admin.credits'); 
     Route::post('/admin/assign-player', [LeagueController::class, 'assignPlayer'])->name('admin.assign');
     Route::post('/admin/remove-player', [LeagueController::class, 'removePlayer'])->name('admin.remove');
-    Route::post('/admin/update-credits', [LeagueController::class, 'updateCredits'])->name('admin.credits.update');
+    
+    // NUOVA ROTTA UNIFICATA PER CREDITI E ANNI
+    Route::post('/admin/update-resources', [LeagueController::class, 'updateResources'])->name('admin.resources.update');
+    
     Route::post('/admin/assign-manual', [LeagueController::class, 'assignManualPlayer'])->name('admin.assign.manual');
 
     // SVINCOLATI

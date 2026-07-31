@@ -84,13 +84,27 @@ class LeagueController extends Controller
         return back();
     }
 
-    // 6. MODIFICA CREDITI
-    public function updateCredits(Request $request)
+    // AGGIORNAMENTO UNIFICATO BUDGET E ANNI
+    public function updateResources(Request $request)
     {
-        $request->validate(['participant_id' => 'required', 'new_credits' => 'required|integer']);
+        $request->validate([
+            'participant_id' => 'required|exists:league_participants,id',
+            'new_credits' => 'required|integer|min:0',
+            'new_years' => 'required|integer|min:1'
+        ]);
+
         $participant = LeagueParticipant::findOrFail($request->participant_id);
-        $participant->update(['remaining_budget' => $request->new_credits]);
-        return back();
+        
+        // Sicurezza: solo l'admin della lega può farlo
+        $league = League::find($participant->league_id);
+        if (auth()->id() !== $league->admin_id) return back();
+
+        $participant->update([
+            'remaining_budget' => $request->new_credits,
+            'years_budget' => $request->new_years
+        ]);
+
+        return back()->with('message', 'Risorse aggiornate correttamente!');
     }
 
     // 7. ALTRE FUNZIONI
