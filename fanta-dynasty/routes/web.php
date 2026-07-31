@@ -11,7 +11,8 @@ Route::middleware(['auth'])->group(function () {
     // HOME
     Route::get('/dashboard', function () {
         $user = auth()->user();
-        $firstLeague = $user->leagues()->first();
+        $leagues = $user->leagues()->get(); 
+        $firstLeague = $leagues->first();
         if ($firstLeague) {
             $myData = \App\Models\LeagueParticipant::where('league_id', $firstLeague->id)->where('user_id', $user->id)->first();
             $myPlayers = \App\Models\Roster::where('league_id', $firstLeague->id)->where('user_id', $user->id)->with('player')->get();
@@ -21,7 +22,7 @@ Route::middleware(['auth'])->group(function () {
             $myData = null; $myPlayers = []; $currentLineup = null; $allParticipants = [];
         }
         return Inertia::render('Dashboard', [
-            'leagues' => $user->leagues,
+            'leagues' => $leagues,
             'myData' => $myData,
             'myPlayers' => $myPlayers,
             'currentLineup' => $currentLineup,
@@ -29,39 +30,36 @@ Route::middleware(['auth'])->group(function () {
         ]);
     })->name('dashboard');
 
-    // SQUADRE (Rose avversarie)
+    // SQUADRE E SOCIETÀ
     Route::get('/teams', [TeamController::class, 'index'])->name('teams.index');
-
-    // --- NUOVA ROTTA: SOCIETÀ (Anagrafe Lega) ---
     Route::get('/societa', [LeagueController::class, 'societaIndex'])->name('societa.index');
-
-    // ROSA (I tuoi contratti)
     Route::get('/rosa', [MarketController::class, 'myRosterPage'])->name('roster.index');
 
     // CALCIOMERCATO
     Route::get('/calciomercato', [MarketController::class, 'auctions'])->name('market.auctions');
     Route::get('/admin/mercato/cronologia', [MarketController::class, 'history'])->name('market.history');
     Route::get('/admin/mercato/sessioni', [MarketController::class, 'sessions'])->name('market.sessions');
+    
+    // --- NUOVA ROTTA: GESTIONE ROSE (SOLO ADMIN) ---
+    Route::get('/admin/gestione-rose', [LeagueController::class, 'manageRosters'])->name('admin.rosters');
+    Route::post('/admin/assign-player', [LeagueController::class, 'assignPlayer'])->name('admin.assign');
+    Route::post('/admin/remove-player', [LeagueController::class, 'removePlayer'])->name('admin.remove');
 
     // SVINCOLATI
     Route::get('/players', [PlayerController::class, 'index'])->name('players.index');
 
-    // AZIONI
-    Route::post('/market/sessions', [MarketController::class, 'storeSession'])->name('market.sessions.store');
-    Route::post('/market/close-all/{league}', [MarketController::class, 'closeMarketNow'])->name('market.close-all');
+    // AZIONI MERCATO
     Route::post('/buy-player', [MarketController::class, 'buy'])->name('players.buy');
     Route::post('/release-player', [MarketController::class, 'release'])->name('players.release');
     Route::post('/market/update-years', [MarketController::class, 'updateContract'])->name('market.update-years');
 
-    // GESTIONE LEGA
+    // GESTIONE LEGA E CAMPO
     Route::get('/leagues/create', [LeagueController::class, 'create'])->name('leagues.create');
     Route::post('/leagues', [LeagueController::class, 'store'])->name('leagues.store');
     Route::get('/leagues/join', [LeagueController::class, 'join'])->name('leagues.join');
     Route::post('/leagues/join', [LeagueController::class, 'joinStore'])->name('leagues.join.store');
     Route::post('/leagues/{league}/toggle-market', [LeagueController::class, 'toggleMarket'])->name('leagues.market.toggle');
     Route::post('/leagues/{league}/update-market', [LeagueController::class, 'updateMarket'])->name('leagues.market.update');
-    
-    // CAMPO
     Route::get('/lineup', [LineupController::class, 'index'])->name('lineup.index');
     Route::post('/lineup', [LineupController::class, 'store'])->name('lineup.store');
 

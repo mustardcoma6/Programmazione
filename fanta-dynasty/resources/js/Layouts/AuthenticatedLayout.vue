@@ -29,12 +29,11 @@ const isAdmin = leagues.length > 0 && leagues[0].admin_id === user.id;
 
                             <!-- MENU DI NAVIGAZIONE -->
                             <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
-                                <!-- 1. HOME -->
                                 <NavLink :href="route('dashboard')" :active="route().current('dashboard')">
                                     Home
                                 </NavLink>
 
-                                <!-- 2. TENDINA SOCIETÀ (Raggruppa Squadre, Rosa e Anagrafe) -->
+                                <!-- TENDINA SOCIETÀ -->
                                 <div class="hidden sm:flex sm:items-center">
                                     <Dropdown align="left" width="48">
                                         <template #trigger>
@@ -51,7 +50,7 @@ const isAdmin = leagues.length > 0 && leagues[0].admin_id === user.id;
                                     </Dropdown>
                                 </div>
                                 
-                                <!-- 3. TENDINA CALCIOMERCATO -->
+                                <!-- TENDINA CALCIOMERCATO -->
                                 <div class="hidden sm:flex sm:items-center">
                                     <Dropdown align="left" width="48">
                                         <template #trigger>
@@ -67,12 +66,11 @@ const isAdmin = leagues.length > 0 && leagues[0].admin_id === user.id;
                                     </Dropdown>
                                 </div>
 
-                                <!-- 4. SVINCOLATI -->
                                 <NavLink :href="route('players.index')" :active="route().current('players.index')">
                                     Svincolati
                                 </NavLink>
 
-                                <!-- 5. TENDINA GESTIONE (SOLO ADMIN) -->
+                                <!-- TENDINA GESTIONE (SOLO ADMIN) -->
                                 <div v-if="isAdmin" class="hidden sm:flex sm:items-center ms-4">
                                     <Dropdown align="right" width="48">
                                         <template #trigger>
@@ -83,6 +81,8 @@ const isAdmin = leagues.length > 0 && leagues[0].admin_id === user.id;
                                         </template>
                                         <template #content>
                                             <DropdownLink :href="route('market.sessions')"> Nuova Sessione </DropdownLink>
+                                            <!-- ECCO IL NUOVO TASTO INSERITO QUI -->
+                                            <DropdownLink :href="route('admin.rosters')"> Gestione Rose </DropdownLink>
                                         </template>
                                     </Dropdown>
                                 </div>
