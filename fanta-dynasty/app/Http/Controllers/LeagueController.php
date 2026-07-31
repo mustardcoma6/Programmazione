@@ -15,42 +15,45 @@ use Carbon\Carbon;
 
 class LeagueController extends Controller
 {
-    // PANNELLO GESTIONE ROSE (ADMIN)
     public function manageRosters()
-    {
-        $user = auth()->user();
-        $league = $user->leagues()->first();
+{
+    $user = auth()->user();
+    
+    // Cerchiamo la lega in modo più diretto
+    $league = \App\Models\League::where('admin_id', $user->id)->first();
 
-        // Protezione: se non c'è una lega o non sei l'admin, torna in dashboard
-        if (!$league || $league->admin_id !== $user->id) {
-            return redirect()->route('dashboard');
-        }
-
-        // 1. Prendiamo tutte le squadre della lega con i loro presidenti
-        $teams = LeagueParticipant::where('league_id', $league->id)
-            ->with('user') 
-            ->get();
-
-        // 2. Per ogni squadra carichiamo i giocatori nel roster
-        foreach ($teams as $team) {
-            $team->players = Roster::where('league_id', $league->id)
-                ->where('user_id', $team->user_id)
-                ->with('player')
-                ->get();
-        }
-
-        // 3. Calciatori disponibili per l'assegnazione rapida
-        $soldIds = Roster::where('league_id', $league->id)->pluck('real_player_id')->toArray();
-        $availablePlayers = RealPlayer::whereNotIn('id', $soldIds)
-            ->orderBy('role', 'desc')
-            ->get();
-
-        return Inertia::render('Admin/Rosters', [
-            'league' => $league,
-            'teams' => $teams,
-            'availablePlayers' => $availablePlayers
-        ]);
+    if (!$league) {
+        // Se non trova la lega, rimandiamo alla dashboard invece di crashare
+        return redirect()->route('dashboard')->with('error', 'Non sei amministratore.');
     }
+
+    // Prendiamo i partecipanti
+    $teams = \App\Models\LeagueParticipant::where('league_id', $league->id)
+        ->with('user')
+        ->get();
+
+    // Carichiamo i giocatori per ogni squadra (Logica manuale per evitare errori di relazione)
+    foreach ($teams as $team) {
+        $team->players = \App\Models\Roster::where('league_id', $league->id)
+            ->where('user_id', $team->user_id)
+            ->with('player')
+            ->get();
+    }
+
+    // Calciatori svincolati
+    $soldIds = \App\Models\Roster::where('league_id', $league->id)->pluck('real_player_id')->toArray();
+    $availablePlayers = \App\Models\RealPlayer::whereNotIn('id', $soldIds)
+        ->orderBy('role', 'desc')
+        ->limit(100) // Online è meglio non caricarne troppi tutti insieme
+        ->get();
+
+    // ASSICURATI CHE IL PERCORSO SIA 'Admin/Rosters' (A e R Maiuscole)
+    return Inertia::render('Admin/Rosters', [
+        'league' => $league,
+        'teams' => $teams,
+        'availablePlayers' => $availablePlayers
+    ]);
+}
 
     // Altre funzioni... (Incolla qui sotto le altre funzioni del file per non cancellarle)
     public function societaIndex() { $user = auth()->user(); $league = $user->leagues()->first(); if (!$league) return redirect()->route('dashboard'); $participants = LeagueParticipant::where('league_id', $league->id)->with('user')->get(); foreach ($participants as $p) { $p->years_used = Roster::where('league_id', $league->id)->where('user_id', $p->user_id)->sum('contract_years'); } return Inertia::render('Societa/Index', ['league' => $league, 'participants' => $participants]); }
