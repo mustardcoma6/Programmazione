@@ -6,77 +6,94 @@ const props = defineProps({ league: Object, sessions: Array });
 
 const form = useForm({ 
     start_at: '', 
-    end_at: '' 
+    end_at: '',
+    auction_duration: 90, // Default 90 minuti
+    roles: ['P', 'D', 'C', 'A'] // Tutti selezionati di base
 });
 
 const submit = () => {
     form.post(route('market.sessions.store'), { 
         preserveScroll: true,
         onSuccess: () => {
-            form.reset();
-            alert("✅ Sessione salvata con successo!");
-        },
-        onError: (errors) => {
-            console.error(errors);
-            alert("❌ Errore nel salvataggio. Controlla i dati inseriti.");
+            form.reset('start_at', 'end_at');
+            alert("Sessione creata con successo!");
         }
     });
 };
 
 const stopMarket = () => {
-    if(confirm("⚠️ ATTENZIONE: Questo chiuderà il mercato immediatamente e ANNULLERÀ tutte le aste in corso. I giocatori torneranno svincolati. Procedere?")) {
-        useForm({}).post(route('market.close-all', props.league.id), {
-            onSuccess: () => alert("Mercato interrotto e aste cancellate.")
-        });
+    if(confirm("Chiudere mercato e annullare aste attive?")) {
+        useForm({}).post(route('market.close-all', props.league.id));
     }
 };
 </script>
 
 <template>
-    <Head title="Calendario Mercato" />
+    <Head title="Gestione Sessioni" />
     <AuthenticatedLayout>
-        <template #header><h2 class="font-black text-xl uppercase">Gestione Sessioni</h2></template>
+        <template #header><h2 class="font-black text-xl uppercase">Calendario Mercato</h2></template>
         
-        <div class="py-12 max-w-2xl mx-auto px-4 space-y-8">
-            <!-- BOX CREAZIONE -->
+        <div class="py-12 max-w-4xl mx-auto px-4 space-y-8">
             <div class="bg-white p-6 shadow-xl rounded-2xl border-t-4 border-blue-600">
-                <h3 class="font-bold mb-4 uppercase text-gray-700">Nuova Sessione</h3>
-                <form @submit.prevent="submit" class="space-y-4">
-                    <div>
-                        <label class="block text-[10px] font-black uppercase text-gray-400">Inizio</label>
-                        <input type="datetime-local" v-model="form.start_at" class="w-full rounded-xl border-gray-300">
-                        <p v-if="form.errors.start_at" class="text-red-500 text-[10px] font-bold mt-1 uppercase">{{ form.errors.start_at }}</p>
+                <h3 class="font-bold mb-6 uppercase text-gray-700">Programma Nuova Sessione</h3>
+                
+                <form @submit.prevent="submit" class="space-y-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-[10px] font-black uppercase text-gray-400 mb-1">Inizio</label>
+                            <input type="datetime-local" v-model="form.start_at" class="w-full rounded-xl border-gray-300">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-black uppercase text-gray-400 mb-1">Fine</label>
+                            <input type="datetime-local" v-model="form.end_at" class="w-full rounded-xl border-gray-300">
+                        </div>
                     </div>
-                    <div>
-                        <label class="block text-[10px] font-black uppercase text-gray-400">Fine</label>
-                        <input type="datetime-local" v-model="form.end_at" class="w-full rounded-xl border-gray-300">
-                        <p v-if="form.errors.end_at" class="text-red-500 text-[10px] font-bold mt-1 uppercase">{{ form.errors.end_at }}</p>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+                        <div>
+                            <label class="block text-[10px] font-black uppercase text-gray-400 mb-1">Durata singola asta (Minuti)</label>
+                            <input type="number" v-model="form.auction_duration" class="w-full rounded-xl border-gray-300 font-mono font-bold" min="1">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-black uppercase text-gray-400 mb-2">Ruoli Abilitati</label>
+                            <div class="flex gap-4">
+                                <label v-for="r in ['P','D','C','A']" :key="r" class="flex items-center gap-1 cursor-pointer">
+                                    <input type="checkbox" :value="r" v-model="form.roles" class="rounded border-gray-300 text-blue-600">
+                                    <span class="font-black text-sm">{{ r }}</span>
+                                </label>
+                            </div>
+                        </div>
                     </div>
+                    
                     <button :disabled="form.processing" class="w-full bg-blue-600 text-white py-4 rounded-xl font-black uppercase shadow-lg hover:bg-blue-700 transition">
-                        {{ form.processing ? 'Salvataggio...' : 'Aggiungi al Calendario' }}
+                        Aggiungi al Calendario
                     </button>
                 </form>
 
-                <!-- TASTO EMERGENZA RIPRISTINATO -->
-                <button @click="stopMarket" class="mt-8 w-full bg-red-50 text-red-600 py-3 rounded-xl text-[10px] font-black uppercase border border-red-100 hover:bg-red-100 transition">
-                    🚨 Chiudi sessione attiva e annulla tutte le aste
-                </button>
+                <button @click="stopMarket" class="mt-8 w-full text-red-600 text-[10px] font-black uppercase hover:underline">⚠️ Emergenza: Chiudi tutto</button>
             </div>
 
-            <!-- TABELLA CRONOLOGIA -->
-            <div class="bg-white shadow rounded-2xl overflow-hidden">
+            <!-- CRONOLOGIA -->
+            <div class="bg-white shadow rounded-2xl overflow-hidden border">
                 <table class="w-full text-left">
                     <thead class="bg-gray-50 border-b">
                         <tr class="text-[10px] font-black uppercase text-gray-400">
-                            <th class="p-4">Inizio</th>
-                            <th class="p-4">Fine</th>
+                            <th class="p-4">Periodo</th>
+                            <th class="p-4 text-center">Durata Asta</th>
+                            <th class="p-4 text-center">Ruoli</th>
                             <th class="p-4 text-right">Stato</th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr v-for="s in sessions" :key="s.id" class="border-b last:border-0 hover:bg-gray-50 transition">
-                            <td class="p-4 text-xs font-bold">{{ new Date(s.start_at).toLocaleString() }}</td>
-                            <td class="p-4 text-xs font-bold">{{ new Date(s.end_at).toLocaleString() }}</td>
+                            <td class="p-4">
+                                <p class="text-xs font-bold">{{ new Date(s.start_at).toLocaleString() }}</p>
+                                <p class="text-[10px] text-gray-400">{{ new Date(s.end_at).toLocaleString() }}</p>
+                            </td>
+                            <td class="p-4 text-center font-mono font-black text-blue-600">{{ s.auction_duration }}m</td>
+                            <td class="p-4 text-center">
+                                <span class="bg-gray-200 px-2 py-0.5 rounded text-[10px] font-black">{{ s.allowed_roles }}</span>
+                            </td>
                             <td class="p-4 text-right">
                                 <span v-if="new Date() > new Date(s.end_at)" class="text-[9px] bg-gray-100 px-2 py-0.5 rounded font-black uppercase text-gray-400">Chiuso</span>
                                 <span v-else-if="new Date() >= new Date(s.start_at)" class="text-[9px] bg-green-100 px-2 py-0.5 rounded font-black uppercase text-green-600">Attivo</span>
