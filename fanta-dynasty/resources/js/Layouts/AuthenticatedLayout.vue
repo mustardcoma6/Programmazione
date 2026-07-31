@@ -81,7 +81,7 @@ const isAdmin = leagues.length > 0 && leagues[0].admin_id === user.id;
                                         </template>
                                         <template #content>
                                             <DropdownLink :href="route('market.sessions')"> Nuova Sessione </DropdownLink>
-                                            <!-- ECCO IL NUOVO TASTO INSERITO QUI -->
+                                            <DropdownLink :href="route('market.history')"> Cronologia </DropdownLink>
                                             <DropdownLink :href="route('admin.rosters')"> Gestione Rose </DropdownLink>
                                         </template>
                                     </Dropdown>
