@@ -67,11 +67,13 @@ const isAdmin = leagues.length > 0 && leagues[0].admin_id === user.id;
                                             <button class="inline-flex items-center px-3 py-2 text-sm font-bold text-red-600 bg-red-50 rounded-lg uppercase border border-red-100">⚙️ Gestione</button>
                                         </template>
                                         <template #content>
-                                            <DropdownLink :href="route('market.sessions')"> Nuova Sessione </DropdownLink>
-                                            <DropdownLink :href="route('admin.rosters')"> Gestione Rose </DropdownLink>
-                                            <!-- NUOVO TASTO AGGIUNTO -->
-                                            <DropdownLink :href="route('admin.credits')"> Gestione Crediti </DropdownLink>
-                                        </template>
+    <DropdownLink :href="route('market.sessions')"> Nuova Sessione </DropdownLink>
+    <DropdownLink :href="route('market.history')"> Cronologia </DropdownLink>
+    <DropdownLink :href="route('admin.rosters')"> Gestione Rose </DropdownLink>
+    <DropdownLink :href="route('admin.credits')"> Gestione Budget </DropdownLink>
+    <!-- NUOVO TASTO -->
+    <DropdownLink :href="route('admin.players')"> Gestione Listone </DropdownLink>
+</template>
                                     </Dropdown>
                                 </div>
                             </div>
