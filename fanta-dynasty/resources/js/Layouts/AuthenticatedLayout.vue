@@ -5,93 +5,66 @@ import Dropdown from '@/Components/Dropdown.vue';
 import DropdownLink from '@/Components/DropdownLink.vue';
 import { Link, usePage } from '@inertiajs/vue3';
 
-const showingNavigationDropdown = ref(false);
-
 const user = usePage().props.auth.user;
+
+// PROTEZIONE TOTALE: Controlliamo se la lega esiste prima di fare calcoli
 const leagues = usePage().props.leagues || [];
-const isAdmin = leagues.length > 0 && leagues[0].admin_id === user.id;
+const hasLeague = leagues.length > 0;
+const isAdmin = hasLeague && leagues[0] ? leagues[0].admin_id === user.id : false;
 </script>
 
 <template>
-    <div>
-        <div class="min-h-screen bg-gray-100">
-            <nav class="bg-white border-b border-gray-100 shadow-sm">
-                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div class="flex justify-between h-16">
-                        <div class="flex">
-                            <div class="shrink-0 flex items-center">
-                                <Link :href="route('dashboard')" class="text-2xl font-black tracking-tighter transition hover:opacity-80">
-                                    <span class="text-blue-600">FANTA</span><span class="text-gray-900">gest</span>
-                                </Link>
-                            </div>
-
-                            <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
-                                <NavLink :href="route('dashboard')" :active="route().current('dashboard')">Home</NavLink>
-
-                                <!-- TENDINA SOCIETÀ -->
-                                <div class="hidden sm:flex sm:items-center">
-                                    <Dropdown align="left" width="48">
-                                        <template #trigger>
-                                            <button class="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium leading-5 text-gray-500 hover:text-gray-700 uppercase font-bold" :class="{'border-blue-500 text-gray-900': route().current('teams.*') || route().current('roster.*') || route().current('societa.*')}">
-                                                Società <svg class="ms-2 -me-0.5 h-4 w-4" fill="currentColor" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" /></svg>
-                                            </button>
-                                        </template>
-                                        <template #content>
-                                            <DropdownLink :href="route('societa.index')"> Anagrafe Lega </DropdownLink>
-                                            <DropdownLink :href="route('teams.index')"> Rose Avversarie </DropdownLink>
-                                            <DropdownLink :href="route('roster.index')"> La mia Rosa </DropdownLink>
-                                        </template>
-                                    </Dropdown>
-                                </div>
-                                
-                                <div class="hidden sm:flex sm:items-center">
-                                    <Dropdown align="left" width="48">
-                                        <template #trigger>
-                                            <button class="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium leading-5 text-gray-500 hover:text-gray-700 uppercase font-bold" :class="{'border-blue-500 text-gray-900': route().current('market.*')}">
-                                                Calciomercato <svg class="ms-2 -me-0.5 h-4 w-4" fill="currentColor" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" /></svg>
-                                            </button>
-                                        </template>
-                                        <template #content>
-                                            <DropdownLink :href="route('market.auctions')"> Aste e Scambi </DropdownLink>
-                                            <DropdownLink :href="route('market.history')"> Cronologia </DropdownLink>
-                                        </template>
-                                    </Dropdown>
-                                </div>
-
-                                <NavLink :href="route('players.index')" :active="route().current('players.index')">Svincolati</NavLink>
-
-                                <!-- TENDINA GESTIONE (SOLO ADMIN) -->
-                                <div v-if="isAdmin" class="hidden sm:flex sm:items-center ms-4">
-                                    <Dropdown align="right" width="48">
-                                        <template #trigger>
-                                            <button class="inline-flex items-center px-3 py-2 text-sm font-bold text-red-600 bg-red-50 rounded-lg uppercase border border-red-100">⚙️ Gestione</button>
-                                        </template>
-                                        <template #content>
-    <DropdownLink :href="route('market.sessions')"> Nuova Sessione </DropdownLink>
-    <DropdownLink :href="route('market.history')"> Cronologia </DropdownLink>
-    <DropdownLink :href="route('admin.rosters')"> Gestione Rose </DropdownLink>
-    <DropdownLink :href="route('admin.credits')"> Gestione Budget </DropdownLink>
-    <!-- NUOVO TASTO -->
-    <DropdownLink :href="route('admin.players')"> Gestione Listone </DropdownLink>
-</template>
-                                    </Dropdown>
-                                </div>
-                            </div>
+    <div class="min-h-screen bg-gray-100">
+        <nav class="bg-white border-b border-gray-100 shadow-sm">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between h-16">
+                    <div class="flex">
+                        <div class="shrink-0 flex items-center">
+                            <Link :href="route('dashboard')" class="text-2xl font-black text-blue-600 italic">FANTAgest</Link>
                         </div>
+                        <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
+                            <NavLink :href="route('dashboard')" :active="route().current('dashboard')">Home</NavLink>
+                            
+                            <!-- I tasti compaiono solo se l'utente ha una lega -->
+                            <template v-if="hasLeague">
+                                <NavLink :href="route('teams.index')" :active="route().current('teams.index')">Squadre</NavLink>
+                                <NavLink :href="route('societa.index')" :active="route().current('societa.index')">Società</NavLink>
+                                <NavLink :href="route('roster.index')" :active="route().current('roster.index')">Rosa</NavLink>
+                                <NavLink :href="route('market.auctions')" :active="route().current('market.auctions')">Calciomercato</NavLink>
+                            </template>
 
-                        <div class="hidden sm:flex sm:items-center">
-                            <Dropdown align="right" width="48">
-                                <template #trigger><button class="font-bold text-gray-500 uppercase text-sm">{{ user.name }} ▼</button></template>
-                                <template #content>
-                                    <DropdownLink :href="route('profile.edit')"> Profilo </DropdownLink>
-                                    <DropdownLink :href="route('logout')" method="post" as="button"> Esci </DropdownLink>
-                                </template>
-                            </Dropdown>
+                            <NavLink :href="route('players.index')" :active="route().current('players.index')">Svincolati</NavLink>
+
+                            <!-- TASTO GESTIONE (Solo Admin) -->
+                            <div v-if="isAdmin" class="hidden sm:flex sm:items-center ms-4">
+                                <Dropdown align="right" width="48">
+                                    <template #trigger>
+                                        <button class="text-sm font-bold text-red-600 bg-red-50 px-3 py-1 rounded-lg uppercase">⚙️ Gestione</button>
+                                    </template>
+                                    <template #content>
+                                        <DropdownLink :href="route('market.sessions')"> Nuova Sessione </DropdownLink>
+                                        <DropdownLink :href="route('admin.rosters')"> Gestione Rose </DropdownLink>
+                                        <DropdownLink :href="route('admin.credits')"> Gestione Budget </DropdownLink>
+                                        <DropdownLink :href="route('admin.players')"> Gestione Listone </DropdownLink>
+                                    </template>
+                                </Dropdown>
+                            </div>
                         </div>
                     </div>
+                    <div class="hidden sm:flex sm:items-center sm:ms-6">
+                        <Dropdown align="right" width="48">
+                            <template #trigger>
+                                <button class="uppercase font-bold text-sm text-gray-500">{{ user.name }} ▼</button>
+                            </template>
+                            <template #content>
+                                <DropdownLink :href="route('profile.edit')">Profilo</DropdownLink>
+                                <DropdownLink :href="route('logout')" method="post" as="button">Esci</DropdownLink>
+                            </template>
+                        </Dropdown>
+                    </div>
                 </div>
-            </nav>
-            <main><slot /></main>
-        </div>
+            </div>
+        </nav>
+        <main><slot /></main>
     </div>
 </template>
