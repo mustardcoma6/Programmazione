@@ -22,7 +22,7 @@ const netBudget = computed(() => {
 const myAuctions = computed(() => (props.activeAuctions || []).filter(auc => auc.user_id === user.id));
 const otherAuctions = computed(() => (props.activeAuctions || []).filter(auc => auc.user_id !== user.id));
 
-// --- TIMER E REFRESH AUTOMATICO OGNI 5 SECONDI ---
+// --- TIMER E REFRESH AUTOMATICO ---
 const timeNow = ref(new Date());
 let interval, refreshInterval;
 onMounted(() => { 
@@ -40,18 +40,24 @@ const getTimer = (date) => {
     return `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
 };
 
-// --- LOGICA RICERCA E FILTRO RUOLO (NUOVA) ---
+// --- LOGICA RICERCA E FILTRI (NOME, RUOLO, SQUADRA) ---
 const searchQuery = ref('');
-const roleFilter = ref(''); // Taccuino per il ruolo selezionato
+const roleFilter = ref('');
+const teamFilter = ref(''); // Nuovo filtro squadra
+
+// Estrae la lista unica delle squadre reali presenti nei giocatori disponibili
+const availableTeams = computed(() => {
+    const teams = props.availablePlayers.map(p => p.real_team);
+    return [...new Set(teams)].sort();
+});
 
 const filteredPlayers = computed(() => {
     return (props.availablePlayers || []).filter(p => {
-        // Controllo Nome
         const nameMatch = p.name.toLowerCase().includes(searchQuery.value.toLowerCase());
-        // Controllo Ruolo (se vuoto, passano tutti)
         const roleMatch = roleFilter.value ? p.role === roleFilter.value : true;
+        const teamMatch = teamFilter.value ? p.real_team === teamFilter.value : true;
         
-        return nameMatch && roleMatch;
+        return nameMatch && roleMatch && teamMatch;
     });
 });
 
@@ -87,7 +93,6 @@ const svincola = (item) => {
     } 
 };
 
-// --- REGOLA 90 MINUTI ---
 const canCallNewPlayers = computed(() => {
     if (!props.currentSession || !props.isMarketOpen) return false;
     const diffInMinutes = (new Date(props.currentSession.end_at) - timeNow.value) / 60000;
@@ -126,19 +131,18 @@ const canCallNewPlayers = computed(() => {
             </div>
 
             <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
-                <!-- ROSA -->
+                <!-- 1. LA TUA ROSA -->
                 <div class="lg:col-span-1 bg-white p-4 shadow rounded-xl border h-fit">
                     <h3 class="font-black uppercase text-xs mb-4 border-b pb-2">La tua Rosa</h3>
                     <div class="space-y-1 max-h-[500px] overflow-y-auto">
                         <div v-for="item in myRoster" :key="item.id" class="p-2 bg-gray-50 border rounded text-[11px] flex justify-between items-center group">
-                            <!-- RUOLO COLORATO IN ROSA -->
                             <span><b :class="'role-' + item.player?.role" class="mr-1">{{ item.player?.role }}</b> {{ item.player?.name }}</span>
                             <button v-if="isMarketOpen" @click="svincola(item)" class="text-red-400 hover:text-red-600 font-bold opacity-0 group-hover:opacity-100 transition">✕</button>
                         </div>
                     </div>
                 </div>
 
-                <!-- ASTE LIVE -->
+                <!-- 2. ASTE LIVE -->
                 <div class="lg:col-span-2 space-y-8">
                     <!-- LE MIE ASTE -->
                     <div v-if="myAuctions.length > 0" class="space-y-4">
@@ -146,7 +150,6 @@ const canCallNewPlayers = computed(() => {
                         <div v-for="auc in myAuctions" :key="auc.id" class="bg-green-50 p-6 shadow rounded-xl border-2 border-green-400">
                             <div class="flex justify-between items-start">
                                 <div>
-                                    <!-- RUOLO COLORATO IN ASTA -->
                                     <span :class="'role-' + auc.player?.role" class="text-[10px] font-black uppercase bg-white px-2 py-0.5 rounded border border-gray-200">{{ auc.player?.role }}</span>
                                     <h4 class="text-xl font-black uppercase text-gray-800 mt-1">{{ auc.player?.name }}</h4>
                                     <p class="text-[10px] text-red-500 font-bold uppercase mt-1">⏱ Scade tra: {{ getTimer(auc.expires_at) }}</p>
@@ -163,7 +166,6 @@ const canCallNewPlayers = computed(() => {
                         <div v-for="auc in otherAuctions" :key="auc.id" class="bg-white p-6 shadow-xl rounded-xl border-2 border-orange-400">
                             <div class="flex justify-between items-start">
                                 <div>
-                                    <!-- RUOLO COLORATO IN ALTRE ASTE -->
                                     <span :class="'role-' + auc.player?.role" class="text-[10px] font-black uppercase bg-white px-2 py-0.5 rounded border border-gray-200">{{ auc.player?.role }}</span>
                                     <h4 class="text-xl font-black uppercase text-gray-800 mt-1">{{ auc.player?.name }}</h4>
                                     <p class="text-xs text-gray-500 italic">Leader: {{ auc.user?.name }}</p>
@@ -171,39 +173,49 @@ const canCallNewPlayers = computed(() => {
                                 </div>
                                 <div class="text-right"><p class="text-3xl font-black text-orange-500 font-mono">{{ auc.current_bid }} cr</p></div>
                             </div>
-                            <div v-if="true" class="mt-4 grid grid-cols-2 gap-4 border-t pt-4">
+                            <div class="mt-4 grid grid-cols-2 gap-4 border-t pt-4">
                                 <div class="flex flex-col gap-1"><span class="text-[9px] font-bold text-gray-400 uppercase">Rilancio Manuale</span><div class="flex gap-1"><input type="number" v-model="inputs.prices[auc.real_player_id]" class="w-full rounded border-gray-300 text-xs" :placeholder="auc.current_bid + 1"><button @click="inviaOfferta(auc.real_player_id, auc.current_bid)" class="bg-blue-600 text-white px-2 py-1 rounded font-bold text-[10px] uppercase">Vai</button></div></div>
-                                <div class="flex flex-col gap-1"><span class="text-[9px] font-bold text-orange-500 uppercase">Offerta Max (Auto)</span><div class="flex gap-1"><input type="number" v-model="inputs.autobids[auc.real_player_id]" class="w-full rounded border-orange-200 text-xs" placeholder="Max"><button @click="inviaOfferta(auc.real_player_id, auc.current_bid, true)" class="bg-orange-500 text-white px-2 py-1 rounded font-bold text-[10px] uppercase">Auto</button></div></div>
+                                <div class="flex flex-col gap-1"><span class="text-[9px] font-bold text-orange-500 uppercase">Offerta Max</span><div class="flex gap-1"><input type="number" v-model="inputs.autobids[auc.real_player_id]" class="w-full rounded border-orange-200 text-xs" placeholder="Max"><button @click="inviaOfferta(auc.real_player_id, auc.current_bid, true)" class="bg-orange-500 text-white px-2 py-1 rounded font-bold text-[10px] uppercase">Auto</button></div></div>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- CHIAMA GIOCATORE -->
+                <!-- 3. CHIAMA GIOCATORE (CON NUOVO FILTRO SQUADRA) -->
                 <div class="lg:col-span-1 bg-white p-4 shadow rounded-xl border-t-4 h-fit" :class="canCallNewPlayers ? 'border-green-600' : 'border-red-600'">
                     <h3 class="font-black uppercase text-xs mb-4 border-b pb-2 text-gray-600">Chiama Giocatore</h3>
                     
                     <div v-if="isMarketOpen && canCallNewPlayers" class="space-y-4">
                         <div class="space-y-2">
+                            <!-- Cerca Nome -->
                             <input v-model="searchQuery" type="text" placeholder="Cerca nome..." class="w-full p-2 text-xs border-gray-300 rounded-lg bg-gray-50 focus:ring-blue-500">
-                            <select v-model="roleFilter" class="w-full p-2 text-xs border-gray-300 rounded-lg bg-gray-50 focus:ring-blue-500 uppercase font-bold text-blue-600">
-                                <option value="">Tutti i Ruoli</option>
-                                <option value="P">Portieri</option>
-                                <option value="D">Difensori</option>
-                                <option value="C">Centrocampisti</option>
-                                <option value="A">Attaccanti</option>
-                            </select>
+                            
+                            <div class="grid grid-cols-2 gap-2">
+                                <!-- Filtro Ruolo -->
+                                <select v-model="roleFilter" class="w-full p-2 text-[10px] border-gray-300 rounded-lg bg-gray-50 uppercase font-bold">
+                                    <option value="">Ruoli</option>
+                                    <option value="P">P</option>
+                                    <option value="D">D</option>
+                                    <option value="C">C</option>
+                                    <option value="A">A</option>
+                                </select>
+                                <!-- Filtro Squadra (NUOVO) -->
+                                <select v-model="teamFilter" class="w-full p-2 text-[10px] border-gray-300 rounded-lg bg-gray-50 font-bold">
+                                    <option value="">Squadre</option>
+                                    <option v-for="team in availableTeams" :key="team" :value="team">{{ team }}</option>
+                                </select>
+                            </div>
                         </div>
                         
                         <div class="space-y-1 max-h-[400px] overflow-y-auto pr-1">
                             <div v-for="p in filteredPlayers" :key="p.id" class="flex justify-between items-center p-2 border-b text-[10px] hover:bg-gray-50 transition group">
-                                <!-- RUOLO COLORATO IN LISTONE -->
                                 <span class="font-bold uppercase tracking-tighter"><b :class="'role-' + p.role" class="mr-1">{{ p.role }}</b> {{ p.name }}</span>
                                 <div class="flex gap-1">
                                     <input type="number" v-model="inputs.prices[p.id]" class="w-10 p-0.5 text-[10px] border-gray-300 rounded" placeholder="1">
                                     <button @click="inviaOfferta(p.id, 0)" class="bg-green-600 text-white px-1.5 py-1 rounded font-black text-[9px] hover:bg-green-700">VAI</button>
                                 </div>
                             </div>
+                            <div v-if="filteredPlayers.length === 0" class="text-center py-4 text-gray-400 text-[10px] italic">Nessun risultato.</div>
                         </div>
                     </div>
                     <div v-else class="text-center py-10 text-gray-400 text-[10px] font-bold uppercase italic">Azione bloccata</div>
@@ -215,7 +227,6 @@ const canCallNewPlayers = computed(() => {
 </template>
 
 <style scoped>
-/* REGOLE COLORI RUOLI */
 .role-P { color: #FFD700 !important; font-weight: 900; } /* Giallo Oro */
 .role-D { color: #006400 !important; font-weight: 900; } /* Verde Scuro */
 .role-C { color: #1e40af !important; font-weight: 900; } /* Blu */
