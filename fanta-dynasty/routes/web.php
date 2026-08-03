@@ -8,12 +8,11 @@ Route::get('/', function () { return Inertia::render('Welcome'); });
 
 Route::middleware(['auth'])->group(function () {
     
-    // DASHBOARD (Sistemata per nuovi utenti)
+    // HOME
     Route::get('/dashboard', function () {
         $user = auth()->user();
         $leagues = $user->leagues()->get(); 
         $firstLeague = $leagues->first();
-        
         $myData = null; $myPlayers = []; $currentLineup = null; $allParticipants = []; $isMarketOpen = false;
 
         if ($firstLeague) {
@@ -34,13 +33,17 @@ Route::middleware(['auth'])->group(function () {
         ]);
     })->name('dashboard');
 
-    // Tutte le altre rotte rimangono uguali sotto...
+    // SQUADRE E SOCIETÀ
     Route::get('/teams', [TeamController::class, 'index'])->name('teams.index');
     Route::get('/societa', [LeagueController::class, 'societaIndex'])->name('societa.index');
     Route::get('/rosa', [MarketController::class, 'myRosterPage'])->name('roster.index');
+
+    // CALCIOMERCATO
     Route::get('/calciomercato', [MarketController::class, 'auctions'])->name('market.auctions');
     Route::get('/admin/mercato/sessioni', [MarketController::class, 'sessions'])->name('market.sessions');
     Route::get('/admin/mercato/cronologia', [MarketController::class, 'history'])->name('market.history');
+
+    // GESTIONE ADMIN
     Route::get('/admin/gestione-rose', [LeagueController::class, 'manageRosters'])->name('admin.rosters');
     Route::get('/admin/gestione-budget', [LeagueController::class, 'manageCredits'])->name('admin.credits');
     Route::get('/admin/gestione-listone', [PlayerController::class, 'adminIndex'])->name('admin.players');
@@ -50,6 +53,11 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/admin/assign-player', [LeagueController::class, 'assignPlayer'])->name('admin.assign');
     Route::post('/admin/assign-manual', [LeagueController::class, 'assignManualPlayer'])->name('admin.assign.manual');
     Route::post('/admin/remove-player', [LeagueController::class, 'removePlayer'])->name('admin.remove');
+    
+    // --- NUOVA ROTTA: ESPULSIONE UTENTE ---
+    Route::delete('/admin/kick-participant/{participant}', [LeagueController::class, 'kickParticipant'])->name('admin.participant.kick');
+
+    // AZIONI UTENTE
     Route::get('/players', [PlayerController::class, 'index'])->name('players.index');
     Route::post('/buy-player', [MarketController::class, 'buy'])->name('players.buy');
     Route::post('/release-player', [MarketController::class, 'release'])->name('players.release');
@@ -58,14 +66,20 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/lineup', [LineupController::class, 'store'])->name('lineup.store');
     Route::post('/market/sessions', [MarketController::class, 'storeSession'])->name('market.sessions.store');
     Route::post('/market/close-all/{league}', [MarketController::class, 'closeMarketNow'])->name('market.close-all');
+
+    // PROFILO
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::post('/profile/team-name', [ProfileController::class, 'updateTeamName'])->name('profile.team.update');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
-    Route::post('/leagues', [LeagueController::class, 'store'])->name('leagues.store');
+
+    // LEGA
     Route::get('/leagues/create', [LeagueController::class, 'create'])->name('leagues.create');
+    Route::post('/leagues', [LeagueController::class, 'store'])->name('leagues.store');
     Route::get('/leagues/join', [LeagueController::class, 'join'])->name('leagues.join');
     Route::post('/leagues/join', [LeagueController::class, 'joinStore'])->name('leagues.join.store');
+    Route::post('/leagues/{league}/toggle-market', [LeagueController::class, 'toggleMarket'])->name('leagues.market.toggle');
+    Route::post('/leagues/{league}/update-market', [LeagueController::class, 'updateMarket'])->name('leagues.market.update');
 });
 
 require __DIR__.'/auth.php';
