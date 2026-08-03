@@ -8,8 +8,20 @@ const props = defineProps({
     myPlayers: Array 
 });
 
+// --- LOGICA COLORI RUOLI ---
+const getRoleClass = (role) => {
+    if (role === 'P') return 'role-P'; // Giallo Oro
+    if (role === 'D') return 'role-D'; // Verde Scuro
+    if (role === 'C') return 'role-C'; // Blu
+    if (role === 'A') return 'role-A'; // Rosso
+    return '';
+};
+
+// --- LOGICA RINNOVO E CLAUSOLA ---
 const addedYears = ref({});
 const addedClausola = ref({}); 
+
+// Inizializziamo i campi per ogni giocatore
 props.myPlayers.forEach(p => {
     addedYears.value[p.id] = 0;
     addedClausola.value[p.id] = 0;
@@ -45,6 +57,7 @@ const saveContract = (item) => {
             onSuccess: () => {
                 addedYears.value[item.id] = 0;
                 addedClausola.value[item.id] = 0;
+                alert("Operazione completata!");
             }
         });
     }
@@ -61,7 +74,7 @@ const saveContract = (item) => {
         <div class="py-12">
             <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
                 
-                <!-- DUE BANNER: VALORI ASSOLUTI IMPOSTATI DALL'ADMIN -->
+                <!-- DUE BANNER: VALORI TOTALI ADMIN -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div class="bg-white p-6 shadow rounded-xl border-l-8 border-blue-600 flex justify-between items-center">
                         <div>
@@ -82,7 +95,7 @@ const saveContract = (item) => {
                         </div>
                         <div class="text-right">
                             <p class="text-4xl font-black font-mono text-green-600">
-                                {{ myData.remaining_budget }} cr
+                                {{ myData.remaining_budget }}
                             </p>
                         </div>
                     </div>
@@ -103,9 +116,13 @@ const saveContract = (item) => {
                         </thead>
                         <tbody>
                             <tr v-for="item in myPlayers" :key="item.id" class="border-b hover:bg-gray-50 transition">
+                                <!-- NOME E RUOLO COLORATO -->
                                 <td class="p-4 uppercase text-sm font-black text-gray-800">
-                                    <span :class="'role-' + item.player.role">{{ item.player.role }}</span>
+                                    <span class="mr-2" :class="getRoleClass(item.player.role)">{{ item.player.role }}</span> 
+                                    {{ item.player.name }}
                                 </td>
+
+                                <!-- CLAUSOLA -->
                                 <td class="p-4 text-center">
                                     <div v-if="addedYears[item.id] > 0" class="flex flex-col items-center">
                                         <input type="number" v-model="addedClausola[item.id]" class="w-16 p-1 text-center border-orange-300 rounded text-xs" placeholder="+ cr">
@@ -113,10 +130,16 @@ const saveContract = (item) => {
                                     <span v-else-if="item.release_clause > 0" class="font-mono font-black text-orange-500">{{ item.release_clause }} cr</span>
                                     <span v-else class="text-gray-400 text-[10px]">NO</span>
                                 </td>
+
+                                <!-- ANNI ATTUALI -->
                                 <td class="p-4 text-center font-mono font-bold text-gray-400">{{ item.contract_years }}</td>
+
+                                <!-- SCADENZA DATA -->
                                 <td class="p-4 text-center font-mono font-bold text-xs text-gray-600">
                                     {{ getExpirationDate(item.contract_years, addedYears[item.id]) }}
                                 </td>
+
+                                <!-- RINNOVA -->
                                 <td class="p-4">
                                     <div class="flex flex-col items-center gap-2">
                                         <div class="flex items-center bg-gray-50 border rounded-lg overflow-hidden">
@@ -127,6 +150,8 @@ const saveContract = (item) => {
                                         <button v-if="addedYears[item.id] > 0" @click="saveContract(item)" class="text-[9px] bg-green-600 text-white px-3 py-1 rounded-full font-black uppercase shadow">Salva</button>
                                     </div>
                                 </td>
+
+                                <!-- COSTO -->
                                 <td class="p-4 text-center font-mono text-gray-400 text-xs">{{ item.purchase_price }} cr</td>
                             </tr>
                         </tbody>
@@ -136,3 +161,11 @@ const saveContract = (item) => {
         </div>
     </AuthenticatedLayout>
 </template>
+
+<style scoped>
+/* REGOLE COLORI RUOLI */
+.role-P { color: #FFD700 !important; font-weight: 900; } /* Giallo Oro */
+.role-D { color: #006400 !important; font-weight: 900; } /* Verde Scuro */
+.role-C { color: #1e40af !important; font-weight: 900; } /* Blu */
+.role-A { color: #dc2626 !important; font-weight: 900; } /* Rosso */
+</style>
