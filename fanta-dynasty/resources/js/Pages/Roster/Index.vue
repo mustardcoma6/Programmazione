@@ -104,7 +104,7 @@ const saveContract = (item) => {
                         <tbody>
                             <tr v-for="item in myPlayers" :key="item.id" class="border-b hover:bg-gray-50 transition">
                                 <td class="p-4 uppercase text-sm font-black text-gray-800">
-                                    <span class="text-blue-600 mr-1">{{ item.player.role }}</span> {{ item.player.name }}
+                                    <span :class="'role-' + item.player.role">{{ item.player.role }}</span>
                                 </td>
                                 <td class="p-4 text-center">
                                     <div v-if="addedYears[item.id] > 0" class="flex flex-col items-center">

@@ -1,3 +1,8 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+/* Colori Ruoli Fantagest */
+.role-P { color: #FFD700 !important; font-weight: 900; } /* Giallo Oro */
+.role-D { color: #006400 !important; font-weight: 900; } /* Verde Scuro */
+.role-C { color: #1e40af !important; font-weight: 900; } /* Blu */
+.role-A { color: #dc2626 !important; font-weight: 900; } /* Rosso */
