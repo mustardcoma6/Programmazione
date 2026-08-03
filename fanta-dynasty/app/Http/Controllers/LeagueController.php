@@ -10,48 +10,42 @@ use Illuminate\Support\Facades\DB;
 
 class LeagueController extends Controller
 {
-    // FUNZIONE ESPULSIONE UTENTE (PUNTO 11 INTEGRATO)
+    // MOSTRA ANAGRAFE SOCIETARIA
+    public function societaIndex()
+    {
+        $user = auth()->user();
+        $league = $user->leagues()->first();
+        if (!$league) return redirect()->route('dashboard');
+
+        $participants = LeagueParticipant::where('league_id', $league->id)->with('user')->get();
+
+        foreach ($participants as $p) {
+            $p->years_used = Roster::where('league_id', $league->id)->where('user_id', $p->user_id)->sum('contract_years');
+        }
+
+        return Inertia::render('Societa/Index', ['league' => $league, 'participants' => $participants]);
+    }
+
     public function kickParticipant(LeagueParticipant $participant)
     {
         $user = auth()->user();
         $league = League::find($participant->league_id);
-
-        // Sicurezza: solo l'admin della lega può espellere
-        if ($league->admin_id !== $user->id) {
-            return back()->withErrors(['error' => 'Non hai i permessi per espellere utenti.']);
-        }
-
-        // Impedisci all'admin di auto-espellersi (distruggerebbe la lega)
-        if ($participant->user_id === $user->id) {
-            return back()->withErrors(['error' => 'Non puoi espellere te stesso! Devi eliminare la lega o l\'account.']);
-        }
+        if ($league->admin_id !== $user->id) return back();
+        if ($participant->user_id === $user->id) return back();
 
         DB::transaction(function () use ($participant, $league) {
-            // 1. Libera i calciatori di quell'utente nella lega
-            Roster::where('league_id', $league->id)
-                ->where('user_id', $participant->user_id)
-                ->delete();
-
-            // 2. Cancella le sue formazioni
-            $lineups = Lineup::where('league_id', $league->id)
-                ->where('user_id', $participant->user_id)
-                ->pluck('id');
+            Roster::where('league_id', $league->id)->where('user_id', $participant->user_id)->delete();
+            $lineups = Lineup::where('league_id', $league->id)->where('user_id', $participant->user_id)->pluck('id');
             LineupDetail::whereIn('lineup_id', $lineups)->delete();
             Lineup::whereIn('id', $lineups)->delete();
-
-            // 3. Cancella le sue aste e autobid
             Auction::where('league_id', $league->id)->where('user_id', $participant->user_id)->delete();
             Autobid::where('user_id', $participant->user_id)->delete();
-
-            // 4. Elimina la partecipazione alla lega
             $participant->delete();
         });
-
-        return back()->with('message', 'Utente espulso e rosa resettata.');
+        return back();
     }
 
-    // [Resto delle funzioni: manageRosters, societaIndex, etc...]
-    public function societaIndex() { $user = auth()->user(); $league = $user->leagues()->first(); if (!$league) return redirect()->route('dashboard'); $participants = LeagueParticipant::where('league_id', $league->id)->with('user')->get(); foreach ($participants as $p) { $p->years_used = \App\Models\Roster::where('league_id', $league->id)->where('user_id', $p->user_id)->sum('contract_years'); } return Inertia::render('Societa/Index', ['league' => $league, 'participants' => $participants]); }
+    // [Mantieni tutte le altre funzioni manageRosters, manageCredits, etc. che abbiamo scritto prima...]
     public function manageRosters() { $user = auth()->user(); $league = League::where('admin_id', $user->id)->first(); if (!$league) return redirect()->route('dashboard'); $teams = LeagueParticipant::where('league_id', $league->id)->with('user')->get(); foreach ($teams as $team) { $team->players = Roster::where('league_id', $league->id)->where('user_id', $team->user_id)->with('player')->get(); } $soldIds = Roster::where('league_id', $league->id)->pluck('real_player_id')->toArray(); $availablePlayers = RealPlayer::whereNotIn('id', $soldIds)->orderBy('role', 'desc')->limit(100)->get(); return Inertia::render('Admin/Rosters', ['league' => $league, 'teams' => $teams, 'availablePlayers' => $availablePlayers]); }
     public function manageCredits() { $user = auth()->user(); $league = League::where('admin_id', $user->id)->first(); if (!$league) return redirect()->route('dashboard'); $teams = LeagueParticipant::where('league_id', $league->id)->with('user')->get(); return Inertia::render('Admin/Credits', ['league' => $league, 'teams' => $teams]); }
     public function updateResources(Request $request) { $p = LeagueParticipant::findOrFail($request->participant_id); $p->update(['remaining_budget' => $request->new_credits, 'years_budget' => $request->new_years]); return back(); }

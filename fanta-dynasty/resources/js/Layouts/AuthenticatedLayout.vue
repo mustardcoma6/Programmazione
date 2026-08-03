@@ -38,18 +38,19 @@ const isAdmin = computed(() => hasLeague.value && leagues.value[0].admin_id === 
                                 <!-- 1. TENDINA SOCIETÀ (Raggruppa Anagrafe, Rose e La mia Rosa) -->
                                 <div class="hidden sm:flex sm:items-center">
                                     <Dropdown align="left" width="48">
-                                        <template #trigger>
-                                            <button class="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-bold leading-5 text-gray-500 hover:text-gray-700 transition uppercase" :class="{'border-blue-500 text-gray-900': route().current('teams.*') || route().current('roster.*') || route().current('societa.*')}">
-                                                Società
-                                                <svg class="ms-2 -me-0.5 h-4 w-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
-                                            </button>
-                                        </template>
-                                        <template #content>
-                                            <DropdownLink :href="route('societa.index')"> Anagrafe Lega </DropdownLink>
-                                            <DropdownLink :href="route('teams.index')"> Rose Avversarie </DropdownLink>
-                                            <DropdownLink :href="route('roster.index')"> La mia Rosa </DropdownLink>
-                                        </template>
-                                    </Dropdown>
+    <template #trigger>
+        <button class="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium leading-5 text-gray-500 hover:text-gray-700 transition uppercase font-bold" :class="{'border-blue-500 text-gray-900': route().current('societa.*') || route().current('teams.*') || route().current('roster.*')}">
+            Società
+            <svg class="ms-2 -me-0.5 h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
+        </button>
+    </template>
+    <template #content>
+        <!-- CONTROLLA QUESTA RIGA -->
+        <DropdownLink :href="route('societa.index')"> Anagrafe Lega </DropdownLink>
+        <DropdownLink :href="route('teams.index')"> Rose Avversarie </DropdownLink>
+        <DropdownLink :href="route('roster.index')"> La mia Rosa </DropdownLink>
+    </template>
+</Dropdown>
                                 </div>
 
                                 <!-- 2. TENDINA CALCIOMERCATO -->
