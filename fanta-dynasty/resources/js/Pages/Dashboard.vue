@@ -1,7 +1,6 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head } from '@inertiajs/vue3';
-import { computed } from 'vue';
 
 const props = defineProps({
     leagues: Array, 
@@ -10,15 +9,6 @@ const props = defineProps({
     allParticipants: Array, 
     currentLineup: Object,
     isMarketOpen: Boolean
-});
-
-// CALCOLO ANNI RIMANENTI (Logica Netta)
-const remainingYears = computed(() => {
-    if (!props.myData) return 0;
-    // Sommiamo gli anni di tutti i giocatori in rosa
-    const yearsUsed = props.myPlayers ? props.myPlayers.reduce((acc, p) => acc + p.contract_years, 0) : 0;
-    // Risultato: Budget Totale - Anni Usati
-    return props.myData.years_budget - yearsUsed;
 });
 </script>
 
@@ -29,7 +19,7 @@ const remainingYears = computed(() => {
             <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-8">
                 
                 <!-- SALUTO PRESIDENTE -->
-                <div class="px-4 sm:px-0 mb-6">
+                <div class="px-4 sm:px-0 mb-4">
                     <h1 class="text-5xl font-black text-gray-900 tracking-tighter italic">Benvenuto Pres!</h1>
                     <p class="text-xs text-blue-600 font-bold uppercase tracking-[0.3em] mt-1 ml-1">Dashboard Direzionale</p>
                 </div>
@@ -58,16 +48,16 @@ const remainingYears = computed(() => {
                                 </div>
                             </div>
 
-                            <!-- BOX RISORSE (VALORI NETTI) -->
-                            <div class="flex gap-6">
+                            <!-- BOX RISORSE (VALORI TOTALI ASSEGNATI) -->
+                            <div class="flex gap-4">
                                 <div class="bg-gray-900 p-6 rounded-2xl text-center shadow-lg w-40">
                                     <p class="text-[10px] font-black text-green-400 uppercase tracking-widest mb-1">Crediti</p>
                                     <p class="text-4xl font-black text-white font-mono">{{ myData.remaining_budget }}</p>
                                 </div>
                                 <div class="bg-indigo-600 p-6 rounded-2xl text-center shadow-lg w-40 transform hover:scale-105 transition">
-                                    <p class="text-[10px] font-black text-indigo-200 uppercase tracking-widest mb-1">Anni Liberi</p>
-                                    <!-- VALORE AL NETTO DEGLI ANNI CONSUMATI -->
-                                    <p class="text-4xl font-black text-white font-mono">{{ remainingYears }}</p>
+                                    <p class="text-[10px] font-bold text-indigo-200 uppercase tracking-widest mb-1">Contratti Disponibili</p>
+                                    <!-- MOSTRA IL VALORE TOTALE ASSEGNATO DALL'ADMIN -->
+                                    <p class="text-4xl font-black text-white font-mono">{{ myData.years_budget }}</p>
                                 </div>
                             </div>
                         </div>
@@ -76,19 +66,19 @@ const remainingYears = computed(() => {
                     <!-- NAVIGAZIONE -->
                     <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
                         <a :href="route('players.index')" class="group bg-white p-6 rounded-3xl shadow-md border-b-4 border-gray-100 hover:border-blue-500 transition text-center">
-                            <span class="text-4xl block mb-2">📋</span>
+                            <span class="text-4xl block mb-2 group-hover:scale-110 transition">📋</span>
                             <span class="font-black uppercase text-[10px] text-gray-500">Svincolati</span>
                         </a>
                         <a :href="route('roster.index')" class="group bg-white p-6 rounded-3xl shadow-md border-b-4 border-gray-100 hover:border-indigo-500 transition text-center">
-                            <span class="text-4xl block mb-2">🧥</span>
+                            <span class="text-4xl block mb-2 group-hover:scale-110 transition">🧥</span>
                             <span class="font-black uppercase text-[10px] text-gray-500">Rosa</span>
                         </a>
                         <a :href="route('market.auctions')" class="group bg-blue-600 p-6 rounded-3xl shadow-xl border-b-4 border-blue-800 hover:bg-blue-700 transition text-center text-white">
-                            <span class="text-4xl block mb-2">🛒</span>
+                            <span class="text-4xl block mb-2 group-hover:scale-110 transition">🛒</span>
                             <span class="font-black uppercase text-[10px]">Mercato</span>
                         </a>
                         <a :href="route('teams.index')" class="group bg-white p-6 rounded-3xl shadow-md border-b-4 border-gray-100 hover:border-orange-500 transition text-center">
-                            <span class="text-4xl block mb-2">🏆</span>
+                            <span class="text-4xl block mb-2 group-hover:scale-110 transition">🏆</span>
                             <span class="font-black uppercase text-[10px] text-gray-500">Squadre</span>
                         </a>
                     </div>
@@ -97,10 +87,9 @@ const remainingYears = computed(() => {
                 <!-- CASO B: L'UTENTE È NUOVO -->
                 <div v-else class="bg-white p-16 text-center shadow-2xl rounded-3xl border-2 border-dashed border-indigo-200">
                     <div class="max-w-md mx-auto">
-                        <span class="text-7xl mb-6 block animate-bounce">🏟️</span>
-                        <h3 class="text-3xl font-black text-gray-900 uppercase">Ancora nessuna lega!</h3>
-                        <p class="text-gray-500 mt-4 mb-10">Crea la tua lega o unisciti a una esistente per iniziare.</p>
-                        <div class="flex flex-col gap-4">
+                        <span class="text-7xl mb-6 block animate-bounce">⚽</span>
+                        <h3 class="text-3xl font-black text-gray-900 uppercase">Benvenuto Pres!</h3>
+                        <div class="flex flex-col gap-4 mt-10">
                             <a :href="route('leagues.create')" class="bg-green-600 text-white py-5 rounded-2xl font-black uppercase tracking-widest shadow-lg">➕ Crea Lega</a>
                             <a :href="route('leagues.join')" class="bg-orange-500 text-white py-5 rounded-2xl font-black uppercase tracking-widest shadow-lg">🤝 Unisciti</a>
                         </div>

@@ -1,7 +1,7 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, useForm } from '@inertiajs/vue3';
-import { computed, ref } from 'vue';
+import { ref } from 'vue';
 
 const props = defineProps({ 
     myData: Object, 
@@ -23,13 +23,6 @@ const changeAdded = (playerId, delta) => {
     }
 };
 
-// CALCOLO ANNI LIBERI (Budget Totale - Anni Usati)
-const remainingYears = computed(() => {
-    const currentOnDb = props.myPlayers.reduce((acc, p) => acc + p.contract_years, 0);
-    const inDraft = Object.values(addedYears.value).reduce((acc, val) => acc + val, 0);
-    return props.myData.years_budget - (currentOnDb + inDraft);
-});
-
 const getExpirationDate = (currentYears, added = 0) => {
     const totalYears = currentYears + added;
     const baseYear = 2026;
@@ -43,7 +36,7 @@ const saveContract = (item) => {
     const finalTotalYears = item.contract_years + yearsToAdd;
     const clausolaPlus = parseInt(addedClausola.value[item.id]) || 0;
     
-    if (confirm(`Rinnovare ${item.player.name}?`)) {
+    if (confirm(`Confermi il rinnovo per ${item.player.name}?`)) {
         yearForm.roster_id = item.id;
         yearForm.new_years = finalTotalYears;
         yearForm.clausola_investment = clausolaPlus;
@@ -52,7 +45,6 @@ const saveContract = (item) => {
             onSuccess: () => {
                 addedYears.value[item.id] = 0;
                 addedClausola.value[item.id] = 0;
-                alert("Rinnovo completato!");
             }
         });
     }
@@ -63,30 +55,30 @@ const saveContract = (item) => {
     <Head title="La mia Rosa" />
     <AuthenticatedLayout>
         <template #header>
-            <h2 class="font-black text-xl uppercase tracking-tighter text-gray-800">Gestione Rosa</h2>
+            <h2 class="font-black text-xl uppercase tracking-tighter text-gray-800">Ufficio Contratti</h2>
         </template>
 
         <div class="py-12">
             <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
                 
-                <!-- DUE BANNER SINCRONIZZATI (VALORI NETTI) -->
+                <!-- DUE BANNER: VALORI ASSOLUTI IMPOSTATI DALL'ADMIN -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div class="bg-white p-6 shadow rounded-xl border-l-8 border-blue-600 flex justify-between items-center">
                         <div>
-                            <h3 class="text-xs font-black text-gray-400 uppercase tracking-widest">Anni Liberi</h3>
-                            <p class="text-sm text-gray-500 font-medium">su un totale di {{ myData.years_budget }}</p>
+                            <h3 class="text-xs font-black text-gray-400 uppercase tracking-widest">Contratti Disponibili</h3>
+                            <p class="text-sm text-gray-500 font-medium">Capacità totale assegnata</p>
                         </div>
                         <div class="text-right">
                             <p class="text-5xl font-black font-mono text-blue-600">
-                                {{ remainingYears }}
+                                {{ myData.years_budget }}
                             </p>
                         </div>
                     </div>
 
                     <div class="bg-white p-6 shadow rounded-xl border-l-8 border-green-500 flex justify-between items-center">
                         <div>
-                            <h3 class="text-xs font-black text-gray-400 uppercase tracking-widest">Crediti Disponibili</h3>
-                            <p class="text-sm text-gray-500 font-medium">Capitale per il mercato</p>
+                            <h3 class="text-xs font-black text-gray-400 uppercase tracking-widest">Crediti Totali</h3>
+                            <p class="text-sm text-gray-500 font-medium">Disponibilità per operazioni</p>
                         </div>
                         <div class="text-right">
                             <p class="text-4xl font-black font-mono text-green-600">
@@ -132,7 +124,7 @@ const saveContract = (item) => {
                                             <span class="px-3 font-black text-blue-600">+{{ addedYears[item.id] }}</span>
                                             <button @click="changeAdded(item.id, 1)" class="px-2 text-green-600">+</button>
                                         </div>
-                                        <button v-if="addedYears[item.id] > 0" @click="saveContract(item)" class="text-[9px] bg-green-600 text-white px-3 py-1 rounded-full font-black uppercase">Salva</button>
+                                        <button v-if="addedYears[item.id] > 0" @click="saveContract(item)" class="text-[9px] bg-green-600 text-white px-3 py-1 rounded-full font-black uppercase shadow">Salva</button>
                                     </div>
                                 </td>
                                 <td class="p-4 text-center font-mono text-gray-400 text-xs">{{ item.purchase_price }} cr</td>
