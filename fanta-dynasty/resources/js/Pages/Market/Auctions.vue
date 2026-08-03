@@ -22,7 +22,7 @@ const netBudget = computed(() => {
 const myAuctions = computed(() => (props.activeAuctions || []).filter(auc => auc.user_id === user.id));
 const otherAuctions = computed(() => (props.activeAuctions || []).filter(auc => auc.user_id !== user.id));
 
-// --- TIMER E REFRESH AUTOMATICO ---
+// --- TIMER E REFRESH AUTOMATICO OGNI 5 SECONDI ---
 const timeNow = ref(new Date());
 let interval, refreshInterval;
 onMounted(() => { 
@@ -85,7 +85,6 @@ const inviaOfferta = (targetId, currentBid, isAuto = false) => {
 
 const releaseForm = useForm({ roster_id: null });
 const svincola = (item) => { 
-    // Calcolo rimborsi per il messaggio
     const baseValue = item.release_clause > 0 ? item.release_clause : item.purchase_price;
     const creditRefund = Math.ceil(baseValue / 2);
     const yearsRefund = Math.floor(item.contract_years / 2);
@@ -117,7 +116,7 @@ const canCallNewPlayers = computed(() => {
         <!-- TIMER GENERALE -->
         <div class="py-4 bg-gray-800 text-white shadow text-center border-b border-gray-700">
             <div v-if="currentSession && isMarketOpen">
-                <p class="text-[10px] uppercase font-bold text-gray-400 tracking-widest">Chiusura Mercato:</p>
+                <p class="text-[10px] uppercase font-bold text-gray-400 tracking-widest">Il Mercato chiude tra:</p>
                 <p class="text-4xl font-mono font-black text-green-400">{{ getTimer(currentSession.end_at) }}</p>
             </div>
             <div v-else><p class="text-xl font-bold text-red-500 uppercase italic">🛑 Mercato Chiuso</p></div>
@@ -142,18 +141,18 @@ const canCallNewPlayers = computed(() => {
             </div>
 
             <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
-                <!-- 1. LA TUA ROSA (TASTO SVINCOLA AGGIORNATO) -->
+                <!-- 1. LA TUA ROSA (TASTO SVINCOLA SEMPRE VISIBILE) -->
                 <div class="lg:col-span-1 bg-white p-4 shadow rounded-xl border h-fit">
                     <h3 class="font-black uppercase text-xs mb-4 border-b pb-2">La tua Rosa</h3>
-                    <div class="space-y-1 max-h-[500px] overflow-y-auto">
-                        <div v-for="item in myRoster" :key="item.id" class="p-2 bg-gray-50 border rounded text-[11px] flex justify-between items-center group transition-all">
+                    <div class="space-y-1 max-h-[500px] overflow-y-auto pr-1">
+                        <div v-for="item in myRoster" :key="item.id" class="p-2 bg-gray-50 border rounded text-[11px] flex justify-between items-center transition-all">
                             <span><b :class="'role-' + item.player?.role" class="mr-1">{{ item.player?.role }}</b> {{ item.player?.name }}</span>
                             
-                            <!-- NUOVO TASTO SVINCOLA -->
+                            <!-- TASTO SVINCOLA: SEMPRE VISIBILE SE MERCATO APERTO -->
                             <button 
                                 v-if="isMarketOpen" 
                                 @click="svincola(item)" 
-                                class="bg-red-50 text-red-500 border border-red-100 px-1.5 py-0.5 rounded text-[8px] font-black uppercase opacity-0 group-hover:opacity-100 hover:bg-red-500 hover:text-white transition-all shadow-sm"
+                                class="bg-red-50 text-red-600 border border-red-200 px-2 py-0.5 rounded text-[8px] font-black uppercase hover:bg-red-600 hover:text-white transition-all shadow-sm"
                             >
                                 Svincola
                             </button>
@@ -163,6 +162,7 @@ const canCallNewPlayers = computed(() => {
 
                 <!-- 2. ASTE LIVE -->
                 <div class="lg:col-span-2 space-y-8">
+                    <!-- LE MIE ASTE -->
                     <div v-if="myAuctions.length > 0" class="space-y-4">
                         <h3 class="font-black text-green-600 uppercase text-xs border-b pb-2">✅ LE MIE ASTE</h3>
                         <div v-for="auc in myAuctions" :key="auc.id" class="bg-green-50 p-6 shadow rounded-xl border-2 border-green-400">
@@ -177,6 +177,7 @@ const canCallNewPlayers = computed(() => {
                         </div>
                     </div>
 
+                    <!-- ALTRE ASTE -->
                     <div class="space-y-4">
                         <h3 class="font-black text-orange-600 uppercase text-xs border-b pb-2">🔥 ALTRE ASTE</h3>
                         <div v-if="otherAuctions.length === 0 && myAuctions.length === 0" class="text-center py-10 bg-white rounded-xl border-2 border-dashed text-gray-400 text-xs font-bold uppercase">Nessuna asta attiva.</div>
@@ -191,8 +192,14 @@ const canCallNewPlayers = computed(() => {
                                 <div class="text-right"><p class="text-3xl font-black text-orange-500 font-mono">{{ auc.current_bid }} cr</p></div>
                             </div>
                             <div class="mt-4 grid grid-cols-2 gap-4 border-t pt-4">
-                                <div class="flex flex-col gap-1"><span class="text-[9px] font-bold text-gray-400 uppercase italic">Rilancio (Min: {{ auc.current_bid + 1 }})</span><div class="flex gap-1"><input type="number" v-model="inputs.prices[auc.real_player_id]" class="w-full rounded border-gray-300 text-xs" :placeholder="auc.current_bid + 1"><button @click="inviaOfferta(auc.real_player_id, auc.current_bid)" class="bg-blue-600 text-white px-2 py-1 rounded font-bold text-[10px] uppercase">Vai</button></div></div>
-                                <div class="flex flex-col gap-1"><span class="text-[9px] font-bold text-orange-500 uppercase italic">Offerta Max</span><div class="flex gap-1"><input type="number" v-model="inputs.autobids[auc.real_player_id]" class="w-full rounded border-orange-200 text-xs" placeholder="Max"><button @click="inviaOfferta(auc.real_player_id, auc.current_bid, true)" class="bg-orange-500 text-white px-2 py-1 rounded font-bold text-[10px] uppercase">Auto</button></div></div>
+                                <div class="flex flex-col gap-1">
+                                    <span class="text-[9px] font-bold text-gray-400 uppercase italic">Rilancio (Min: {{ auc.current_bid + 1 }})</span>
+                                    <div class="flex gap-1"><input type="number" v-model="inputs.prices[auc.real_player_id]" class="w-full rounded border-gray-300 text-xs" :placeholder="auc.current_bid + 1"><button @click="inviaOfferta(auc.real_player_id, auc.current_bid)" class="bg-blue-600 text-white px-2 py-1 rounded font-bold text-[10px] uppercase">Vai</button></div>
+                                </div>
+                                <div class="flex flex-col gap-1">
+                                    <span class="text-[9px] font-bold text-orange-500 uppercase italic">Offerta Max</span>
+                                    <div class="flex gap-1"><input type="number" v-model="inputs.autobids[auc.real_player_id]" class="w-full rounded border-orange-200 text-xs" placeholder="Max"><button @click="inviaOfferta(auc.real_player_id, auc.current_bid, true)" class="bg-orange-500 text-white px-2 py-1 rounded font-bold text-[10px] uppercase">Auto</button></div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -203,7 +210,7 @@ const canCallNewPlayers = computed(() => {
                     <h3 class="font-black uppercase text-xs mb-4 border-b pb-2 text-gray-600">Chiama Giocatore</h3>
                     <div v-if="isMarketOpen && canCallNewPlayers" class="space-y-4">
                         <div class="space-y-2">
-                            <input v-model="searchQuery" type="text" placeholder="Cerca nome..." class="w-full p-2 text-xs border-gray-300 rounded-lg bg-gray-50">
+                            <input v-model="searchQuery" type="text" placeholder="Cerca nome..." class="w-full p-2 text-xs border-gray-300 rounded-lg bg-gray-50 focus:ring-blue-500">
                             <div class="grid grid-cols-2 gap-2">
                                 <select v-model="roleFilter" class="w-full p-2 text-[10px] border-gray-300 rounded-lg bg-gray-50 uppercase font-bold">
                                     <option value="">Ruoli</option><option value="P">P</option><option value="D">D</option><option value="C">C</option><option value="A">A</option>
@@ -214,7 +221,7 @@ const canCallNewPlayers = computed(() => {
                             </div>
                         </div>
                         <div class="space-y-1 max-h-[400px] overflow-y-auto pr-1">
-                            <div v-for="p in filteredPlayers" :key="p.id" class="flex justify-between items-center p-2 border-b text-[10px] hover:bg-gray-50 transition group">
+                            <div v-for="p in filteredPlayers" :key="p.id" class="flex justify-between items-center p-2 border-b text-[10px] hover:bg-gray-50 transition">
                                 <span class="font-bold uppercase tracking-tighter"><b :class="'role-' + p.role" class="mr-1">{{ p.role }}</b> {{ p.name }}</span>
                                 <div class="flex gap-1">
                                     <input type="number" v-model="inputs.prices[p.id]" class="w-10 p-0.5 text-[10px] border-gray-300 rounded" placeholder="1">
