@@ -13,17 +13,48 @@ Route::middleware(['auth'])->group(function () {
         $user = auth()->user();
         $leagues = $user->leagues()->get(); 
         $firstLeague = $leagues->first();
-        $myData = null; $myPlayers = []; $currentLineup = null; $allParticipants = []; $isMarketOpen = false;
+        
+        $myData = null; $myPlayers = []; $currentLineup = null; $allParticipants = []; 
+        $isMarketOpen = false; $stats = null;
 
         if ($firstLeague) {
             $myData = \App\Models\LeagueParticipant::where('league_id', $firstLeague->id)->where('user_id', $user->id)->first();
             $myPlayers = \App\Models\Roster::where('league_id', $firstLeague->id)->where('user_id', $user->id)->with('player')->get();
             $currentLineup = \App\Models\Lineup::where('league_id', $firstLeague->id)->where('user_id', $user->id)->where('matchday', 1)->with('details.player')->first();
-            $allParticipants = \App\Models\LeagueParticipant::where('league_id', $firstLeague->id)->get();
+            $allParticipants = \App\Models\LeagueParticipant::where('league_id', $firstLeague->id)->orderBy('remaining_budget', 'desc')->get();
             $isMarketOpen = \App\Models\MarketSession::where('league_id', $firstLeague->id)->where('start_at', '<=', now())->where('end_at', '>=', now())->exists();
+
+            // --- CALCOLO STATISTICHE AVANZATE ---
+            
+            // 1. Spesa Oggi (Crediti e Anni)
+            $spentTodayCredits = \App\Models\Roster::where('user_id', $user->id)->where('league_id', $firstLeague->id)->whereDate('created_at', \Carbon\Carbon::today())->sum('purchase_price');
+            $spentTodayYears = \App\Models\Roster::where('user_id', $user->id)->where('league_id', $firstLeague->id)->whereDate('created_at', \Carbon\Carbon::today())->sum('contract_years');
+
+            // 2. Giocatore più pagato
+            $topSigning = \App\Models\Roster::where('user_id', $user->id)->where('league_id', $firstLeague->id)->with('player')->orderBy('purchase_price', 'desc')->first();
+
+            // 3. Posizione in classifica economica
+            $rank = \App\Models\LeagueParticipant::where('league_id', $firstLeague->id)->where('remaining_budget', '>', $myData->remaining_budget)->count() + 1;
+
+            $stats = [
+                'spentToday' => $spentTodayCredits,
+                'yearsToday' => $spentTodayYears,
+                'topPlayer' => $topSigning ? $topSigning->player->name : 'Nessuno',
+                'topPrice' => $topSigning ? $topSigning->purchase_price : 0,
+                'rank' => $rank,
+                'totalParticipants' => count($allParticipants)
+            ];
         }
 
-        return Inertia::render('Dashboard', ['leagues' => $leagues, 'myData' => $myData, 'myPlayers' => $myPlayers, 'currentLineup' => $currentLineup, 'allParticipants' => $allParticipants, 'isMarketOpen' => (bool)$isMarketOpen]);
+        return Inertia::render('Dashboard', [
+            'leagues' => $leagues,
+            'myData' => $myData,
+            'myPlayers' => $myPlayers,
+            'currentLineup' => $currentLineup,
+            'allParticipants' => $allParticipants,
+            'isMarketOpen' => (bool)$isMarketOpen,
+            'stats' => $stats
+        ]);
     })->name('dashboard');
 
     // --- SOCIETÀ (ANAGRAFE) ---
