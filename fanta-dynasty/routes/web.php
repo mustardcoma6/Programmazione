@@ -33,7 +33,6 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/admin/gestione-budget', [LeagueController::class, 'manageCredits'])->name('admin.credits');
     Route::get('/admin/gestione-listone', [PlayerController::class, 'adminIndex'])->name('admin.players');
     Route::get('/admin/gestione-finanze', [LeagueController::class, 'manageFinances'])->name('admin.finances');
-    
     Route::post('/admin/players', [PlayerController::class, 'store'])->name('admin.players.store');
     Route::delete('/admin/players/{player}', [PlayerController::class, 'destroy'])->name('admin.players.destroy');
     Route::post('/admin/players/bulk-import', [PlayerController::class, 'bulkImport'])->name('admin.players.bulk-import');
@@ -43,7 +42,9 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/admin/assign-manual', [LeagueController::class, 'assignManualPlayer'])->name('admin.assign.manual');
     Route::post('/admin/remove-player', [LeagueController::class, 'removePlayer'])->name('admin.remove');
     Route::delete('/admin/kick-participant/{participant}', [LeagueController::class, 'kickParticipant'])->name('admin.participant.kick');
-
+Route::get('/admin/gestione-primavera', [LeagueController::class, 'managePrimavera'])->name('admin.primavera');
+Route::post('/admin/primavera-assign', [LeagueController::class, 'assignPrimavera'])->name('admin.primavera.assign');
+Route::post('/admin/primavera-remove', [LeagueController::class, 'removePrimavera'])->name('admin.primavera.remove');
     // AZIONI UTENTE
     Route::post('/buy-player', [MarketController::class, 'buy'])->name('players.buy');
     Route::post('/release-player', [MarketController::class, 'release'])->name('players.release');

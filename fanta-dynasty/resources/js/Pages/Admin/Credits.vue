@@ -10,7 +10,8 @@ const resourceInputs = reactive({});
 props.teams.forEach(t => { 
     resourceInputs[t.id] = {
         credits: t.remaining_budget,
-        years: t.years_budget
+        years: t.years_budget,
+        primavera: t.remaining_primavera_budget // AGGIUNTO: Crediti Primavera
     };
 });
 
@@ -18,10 +19,11 @@ const updateResources = (teamId) => {
     useForm({
         participant_id: teamId,
         new_credits: resourceInputs[teamId].credits,
-        new_years: resourceInputs[teamId].years
+        new_years: resourceInputs[teamId].years,
+        new_primavera_credits: resourceInputs[teamId].primavera // AGGIUNTO: Invio crediti Primavera
     }).post(route('admin.resources.update'), { 
         preserveScroll: true,
-        onSuccess: () => alert("Risorse della squadra aggiornate!") 
+        onSuccess: () => alert("Risorse della squadra aggiornate correttamente!") 
     });
 };
 </script>
@@ -31,14 +33,15 @@ const updateResources = (teamId) => {
     <AuthenticatedLayout>
         <template #header><h2 class="font-black text-xl uppercase tracking-tight text-gray-800">Ufficio Tesoreria & Contratti (Admin)</h2></template>
         
-        <div class="py-12 max-w-6xl mx-auto px-4">
+        <div class="py-12 max-w-7xl mx-auto px-4">
             <div class="bg-white shadow-xl rounded-2xl overflow-hidden border border-gray-100">
                 <table class="w-full text-left border-collapse">
                     <thead>
                         <tr class="bg-gray-100 text-[10px] font-black uppercase text-gray-400">
                             <th class="p-6">Squadra / Presidente</th>
-                            <th class="p-6 text-center">Budget Crediti</th>
-                            <th class="p-6 text-center">Budget Anni Totali</th>
+                            <th class="p-6 text-center text-green-600">Crediti Prima Rosa</th>
+                            <th class="p-6 text-center text-violet-600">Crediti Primavera</th> <!-- NUOVA COLONNA -->
+                            <th class="p-6 text-center text-blue-600">Anni Totali</th>
                             <th class="p-6 text-right">Azione</th>
                         </tr>
                     </thead>
@@ -49,10 +52,10 @@ const updateResources = (teamId) => {
                                 <p class="text-xs text-gray-400 font-bold uppercase">{{ t.user.name }}</p>
                             </td>
                             
-                            <!-- GESTIONE CREDITI -->
+                            <!-- GESTIONE CREDITI PRIMA ROSA -->
                             <td class="p-6 text-center">
                                 <div class="flex flex-col items-center gap-1">
-                                    <span class="text-[9px] text-gray-400 uppercase font-bold">Attuali: {{ t.remaining_budget }} cr</span>
+                                    <span class="text-[9px] text-gray-400 uppercase font-bold">Attuali: {{ t.remaining_budget }}</span>
                                     <input 
                                         type="number" 
                                         v-model="resourceInputs[t.id].credits" 
@@ -61,10 +64,22 @@ const updateResources = (teamId) => {
                                 </div>
                             </td>
 
+                            <!-- GESTIONE CREDITI PRIMAVERA (VIOLA) -->
+                            <td class="p-6 text-center">
+                                <div class="flex flex-col items-center gap-1">
+                                    <span class="text-[9px] text-gray-400 uppercase font-bold">Attuali: {{ t.remaining_primavera_budget }}</span>
+                                    <input 
+                                        type="number" 
+                                        v-model="resourceInputs[t.id].primavera" 
+                                        class="w-24 p-2 text-sm border-violet-300 rounded-lg font-mono font-black text-violet-600 focus:ring-violet-500"
+                                    >
+                                </div>
+                            </td>
+
                             <!-- GESTIONE ANNI -->
                             <td class="p-6 text-center">
                                 <div class="flex flex-col items-center gap-1">
-                                    <span class="text-[9px] text-gray-400 uppercase font-bold">Attuali: {{ t.years_budget }} y</span>
+                                    <span class="text-[9px] text-gray-400 uppercase font-bold">Attuali: {{ t.years_budget }}</span>
                                     <input 
                                         type="number" 
                                         v-model="resourceInputs[t.id].years" 
@@ -86,14 +101,18 @@ const updateResources = (teamId) => {
                 </table>
             </div>
             
-            <div class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div class="p-4 bg-blue-50 rounded-lg border border-blue-100">
                     <p class="text-[10px] text-blue-700 font-bold uppercase">Nota Anni:</p>
-                    <p class="text-xs text-blue-600">Modificando gli Anni Totali (es. da 40 a 45), aumenterai la capacità della squadra di rinnovare i propri giocatori.</p>
+                    <p class="text-xs text-blue-600">Modifica il tetto massimo degli anni per i rinnovi.</p>
                 </div>
                 <div class="p-4 bg-green-50 rounded-lg border border-green-100">
-                    <p class="text-[10px] text-green-700 font-bold uppercase">Nota Crediti:</p>
-                    <p class="text-xs text-green-600">Il valore inserito sovrascrive il budget attuale. Utile per bonus vittoria o sanzioni.</p>
+                    <p class="text-[10px] text-green-700 font-bold uppercase">Nota Crediti Prima Rosa:</p>
+                    <p class="text-xs text-green-600">Budget per il mercato e le aste principali.</p>
+                </div>
+                <div class="p-4 bg-violet-50 rounded-lg border border-violet-100">
+                    <p class="text-[10px] text-violet-700 font-bold uppercase">Nota Crediti Primavera:</p>
+                    <p class="text-xs text-violet-600">Budget separato per gli acquisti del settore giovanile.</p>
                 </div>
             </div>
         </div>

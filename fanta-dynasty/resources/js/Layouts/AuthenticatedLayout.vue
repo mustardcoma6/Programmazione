@@ -92,6 +92,7 @@ const isAdmin = computed(() => hasLeague.value && leagues.value[0]?.admin_id ===
                                         <DropdownLink :href="route('admin.credits')"> Gestione Budget </DropdownLink>
                                         <DropdownLink :href="route('admin.players')"> Gestione Listone </DropdownLink>
                                         <DropdownLink :href="route('admin.finances')"> Gestione Finanze </DropdownLink>
+                                    <DropdownLink :href="route('admin.primavera')"> Gestione Primavera </DropdownLink>
                                     </template>
                                 </Dropdown>
                             </div>
