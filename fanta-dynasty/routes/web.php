@@ -58,8 +58,9 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/admin/assign-manual', [LeagueController::class, 'assignManualPlayer'])->name('admin.assign.manual');
     Route::post('/admin/remove-player', [LeagueController::class, 'removePlayer'])->name('admin.remove');
     Route::delete('/admin/kick-participant/{participant}', [LeagueController::class, 'kickParticipant'])->name('admin.participant.kick');
-
-    // AZIONI UTENTE
+Route::post('/admin/players/bulk-import', [PlayerController::class, 'bulkImport'])->name('admin.players.bulk-import');
+   
+// AZIONI UTENTE
     Route::post('/buy-player', [MarketController::class, 'buy'])->name('players.buy');
     Route::post('/release-player', [MarketController::class, 'release'])->name('players.release');
     Route::post('/market/update-years', [MarketController::class, 'updateContract'])->name('market.update-years');

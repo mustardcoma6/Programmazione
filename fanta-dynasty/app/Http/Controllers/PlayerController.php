@@ -85,4 +85,34 @@ class PlayerController extends Controller
 
         return back();
     }
+    public function bulkImport(Request $request)
+{
+    $list = $request->input('players_list');
+
+    if (!is_array($list)) {
+        return back()->withErrors(['error' => 'Dati non validi.']);
+    }
+
+    foreach ($list as $item) {
+        // Pulizia dei dati
+        $name = trim($item['name']);
+        $role = strtoupper(trim($item['role']));
+        $team = trim($item['team']);
+        $quotation = (int)$item['quotation'];
+
+        // Comando Magico: Cerca per nome, se lo trovi aggiorna i dati, 
+        // se non lo trovi crealo con questi dati.
+        \App\Models\RealPlayer::updateOrCreate(
+            ['name' => $name], // Condizione di ricerca
+            [
+                'role' => $role,
+                'real_team' => $team,
+                'quotation' => $quotation,
+                'initial_value' => $quotation // Impostiamo anche il valore iniziale uguale alla quotazione
+            ]
+        );
+    }
+
+    return back()->with('message', 'Listone aggiornato con successo!');
+}
 }
