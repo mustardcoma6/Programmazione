@@ -9,11 +9,13 @@ Route::get('/', function () { return Inertia::render('Welcome'); });
 Route::middleware(['auth'])->group(function () {
     
     // HOME
-    Route::get('/dashboard', function () {
+   Route::get('/dashboard', function () {
         $user = auth()->user();
         $leagues = $user->leagues()->get(); 
         $firstLeague = $leagues->first();
-        $myData = null; $myPlayers = []; $currentLineup = null; $allParticipants = []; $isMarketOpen = false; $stats = null;
+        
+        $myData = null; $myPlayers = []; $currentLineup = null; $allParticipants = []; 
+        $isMarketOpen = false; $stats = null;
 
         if ($firstLeague) {
             $myData = \App\Models\LeagueParticipant::where('league_id', $firstLeague->id)->where('user_id', $user->id)->first();
@@ -21,14 +23,30 @@ Route::middleware(['auth'])->group(function () {
             $currentLineup = \App\Models\Lineup::where('league_id', $firstLeague->id)->where('user_id', $user->id)->where('matchday', 1)->with('details.player')->first();
             $allParticipants = \App\Models\LeagueParticipant::where('league_id', $firstLeague->id)->orderBy('remaining_budget', 'desc')->get();
             $isMarketOpen = \App\Models\MarketSession::where('league_id', $firstLeague->id)->where('start_at', '<=', now())->where('end_at', '>=', now())->exists();
-            $spentTodayCredits = \App\Models\Roster::where('user_id', $user->id)->where('league_id', $firstLeague->id)->whereDate('created_at', \Carbon\Carbon::today())->sum('purchase_price');
-            $spentTodayYears = \App\Models\Roster::where('user_id', $user->id)->where('league_id', $firstLeague->id)->whereDate('created_at', \Carbon\Carbon::today())->sum('contract_years');
+
+            // 1. Giocatore più pagato
             $topSigning = \App\Models\Roster::where('user_id', $user->id)->where('league_id', $firstLeague->id)->with('player')->orderBy('purchase_price', 'desc')->first();
+
+            // 2. Posizione in classifica economica
             $rank = \App\Models\LeagueParticipant::where('league_id', $firstLeague->id)->where('remaining_budget', '>', $myData->remaining_budget)->count() + 1;
-            $stats = ['spentToday' => $spentTodayCredits, 'yearsToday' => $spentTodayYears, 'topPlayer' => $topSigning ? $topSigning->player->name : 'Nessuno', 'topPrice' => $topSigning ? $topSigning->purchase_price : 0, 'rank' => $rank, 'totalParticipants' => count($allParticipants)];
+
+            $stats = [
+                'topPlayer' => $topSigning ? $topSigning->player->name : 'Nessuno',
+                'topPrice' => $topSigning ? $topSigning->purchase_price : 0,
+                'rank' => $rank,
+                'totalParticipants' => count($allParticipants)
+            ];
         }
 
-        return Inertia::render('Dashboard', ['leagues' => $leagues, 'myData' => $myData, 'myPlayers' => $myPlayers, 'currentLineup' => $currentLineup, 'allParticipants' => $allParticipants, 'isMarketOpen' => (bool)$isMarketOpen, 'stats' => $stats]);
+        return Inertia::render('Dashboard', [
+            'leagues' => $leagues,
+            'myData' => $myData,
+            'myPlayers' => $myPlayers,
+            'currentLineup' => $currentLineup,
+            'allParticipants' => $allParticipants,
+            'isMarketOpen' => (bool)$isMarketOpen,
+            'stats' => $stats
+        ]);
     })->name('dashboard');
 
     // SEZIONE SOCIETÀ
