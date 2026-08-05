@@ -50,6 +50,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/admin/gestione-rose', [LeagueController::class, 'manageRosters'])->name('admin.rosters');
     Route::get('/admin/gestione-budget', [LeagueController::class, 'manageCredits'])->name('admin.credits');
     // GESTIONE LISTONE
+   // GESTIONE LISTONE (ADMIN)
     Route::get('/admin/gestione-listone', [PlayerController::class, 'adminIndex'])->name('admin.players');
     Route::post('/admin/players', [PlayerController::class, 'store'])->name('admin.players.store');
     Route::delete('/admin/players/{player}', [PlayerController::class, 'destroy'])->name('admin.players.destroy');

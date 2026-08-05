@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\DB;
 
 class PlayerController extends Controller
 {
-    // LISTA PUBBLICA SVINCOLATI (Per gli utenti)
+    // LISTA PUBBLICA PER UTENTI
     public function index()
     {
         $league = auth()->user()->leagues()->first();
@@ -25,25 +25,14 @@ class PlayerController extends Controller
         return Inertia::render('Players/Index', ['players' => $available]);
     }
 
-    // GESTIONE ADMIN: Mostra TUTTI i giocatori (Liberi e Occupati)
+    // LISTA PER ADMIN
     public function adminIndex()
     {
-        $league = auth()->user()->leagues()->first();
-        
-        // Prendiamo tutti i giocatori
         $players = RealPlayer::orderBy('role', 'desc')->orderBy('name', 'asc')->get();
-        
-        // Per ogni giocatore, controlliamo se è occupato in questa lega per avvisare l'admin
-        foreach ($players as $p) {
-            $p->owner = Roster::where('real_player_id', $p->id)
-                ->where('league_id', $league->id)
-                ->with('user')
-                ->first();
-        }
-
         return Inertia::render('Admin/Players', ['players' => $players]);
     }
 
+    // SALVA SINGOLO GIOCATORE
     public function store(Request $request)
     {
         $request->validate([
@@ -56,38 +45,41 @@ class PlayerController extends Controller
             'name' => $request->name,
             'role' => $request->role,
             'real_team' => $request->real_team,
-            'initial_value' => 1
+            'initial_value' => 1,
+            'quotation' => 1
         ]);
 
-        return back()->with('message', 'Giocatore aggiunto al sistema!');
+        return back();
     }
 
-    // ELIMINAZIONE TOTALE (POTERE ADMIN)
+    // AGGIORNAMENTO MASSIVO QUOTAZIONI
+    public function massUpdateQuotations(Request $request)
+    {
+        $data = $request->input('data');
+        if (!is_array($data)) return back();
+
+        foreach ($data as $item) {
+            $cleanName = trim($item['name']);
+            $player = RealPlayer::where('name', 'LIKE', $cleanName)->first();
+            if ($player) {
+                $player->update(['quotation' => (int)$item['quotation']]);
+            }
+        }
+        return back();
+    }
+
+    // ELIMINA GIOCATORE
     public function destroy(RealPlayer $player)
     {
         DB::transaction(function () use ($player) {
-            // 1. Lo rimuoviamo dalle rose di tutte le squadre (Roster)
             Roster::where('real_player_id', $player->id)->delete();
-
-            // 2. Lo rimuoviamo dalle formazioni (Lineup)
             LineupDetail::where('real_player_id', $player->id)->delete();
-
-            // 3. Lo rimuoviamo dalle aste attive
             $auctionIds = Auction::where('real_player_id', $player->id)->pluck('id');
             Autobid::whereIn('auction_id', $auctionIds)->delete();
             Auction::where('real_player_id', $player->id)->delete();
-
-            // 4. Infine lo eliminiamo dal listone mondiale
             $player->delete();
         });
 
-        return back()->with('message', 'Giocatore eliminato ovunque con successo.');
+        return back();
     }
-    // GESTIONE LISTONE
-    Route::get('/admin/gestione-listone', [PlayerController::class, 'adminIndex'])->name('admin.players');
-    Route::post('/admin/players', [PlayerController::class, 'store'])->name('admin.players.store');
-    Route::delete('/admin/players/{player}', [PlayerController::class, 'destroy'])->name('admin.players.destroy');
-    
-    // QUESTA RIGA DEVE ESSERE ESATTAMENTE COSÌ
-    Route::post('/admin/players/mass-update', [PlayerController::class, 'massUpdateQuotations'])->name('admin.players.mass-update');
 }
