@@ -88,12 +88,15 @@ const isAdmin = computed(() => hasLeague.value && leagues.value[0].admin_id === 
                             <div v-if="isAdmin" class="hidden sm:flex sm:items-center ms-4">
                                 <Dropdown align="right" width="48">
                                     <template #trigger><button class="text-sm font-bold text-red-600 bg-red-50 px-3 py-1 rounded-lg uppercase">⚙️ Gestione</button></template>
-                                    <template #content>
-                                        <DropdownLink :href="route('market.sessions')"> Nuova Sessione </DropdownLink>
-                                        <DropdownLink :href="route('admin.rosters')"> Gestione Rose </DropdownLink>
-                                        <DropdownLink :href="route('admin.credits')"> Gestione Budget </DropdownLink>
-                                        <DropdownLink :href="route('admin.players')"> Gestione Listone </DropdownLink>
-                                    </template>
+                                    <!-- Trova la tendina Gestione e aggiungi il link -->
+<template #content>
+    <DropdownLink :href="route('market.sessions')"> Nuova Sessione </DropdownLink>
+    <DropdownLink :href="route('market.history')"> Cronologia </DropdownLink>
+    <DropdownLink :href="route('admin.rosters')"> Gestione Rose </DropdownLink>
+    <DropdownLink :href="route('admin.credits')"> Gestione Budget </DropdownLink>
+    <DropdownLink :href="route('admin.players')"> Gestione Listone </DropdownLink>
+    <DropdownLink :href="route('admin.finances')"> Gestione Finanze </DropdownLink>
+</template>
                                 </Dropdown>
                             </div>
                         </div>
