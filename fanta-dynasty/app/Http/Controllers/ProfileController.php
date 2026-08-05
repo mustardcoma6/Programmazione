@@ -18,13 +18,12 @@ class ProfileController extends Controller
     public function edit(Request $request): Response
     {
         $user = $request->user();
-        $participant = LeagueParticipant::where('user_id', $user->id)->first();
+        $participant = \App\Models\LeagueParticipant::where('user_id', $user->id)->first();
 
         return Inertia::render('Profile/Edit', [
-            'mustVerifyEmail' => $user instanceof MustVerifyEmail,
+            'mustVerifyEmail' => $user instanceof \Illuminate\Contracts\Auth\MustVerifyEmail,
             'status' => session('status'),
             'teamName' => $participant ? $participant->team_name : null,
-            'teamLogo' => $participant ? $participant->logo_path : null, // Passiamo il logo attuale
         ]);
     }
 
@@ -49,30 +48,7 @@ class ProfileController extends Controller
         return Redirect::route('profile.edit');
     }
 
-    // FUNZIONE PER CARICARE IL LOGO (PUNTO 5)
-    public function updateTeamLogo(Request $request): RedirectResponse
-    {
-        $request->validate([
-            'logo' => 'required|image|mimes:jpg,jpeg,png|max:2048',
-        ]);
-
-        $user = auth()->user();
-        $participant = LeagueParticipant::where('user_id', $user->id)->first();
-
-        if ($request->hasFile('logo') && $participant) {
-            // Salviamo il file nel disco 'public'
-            $path = $request->file('logo')->store('logos', 'public');
-            
-            // Generiamo l'URL completo (es. https://tuosito.railway.app/storage/logos/xxx.png)
-            $fullUrl = asset('storage/' . $path);
-            
-            $participant->update([
-                'logo_path' => $fullUrl
-            ]);
-        }
-
-        return Redirect::route('profile.edit')->with('message', 'Logo aggiornato!');
-    }
+    
 
     public function destroy(Request $request): RedirectResponse
     {
