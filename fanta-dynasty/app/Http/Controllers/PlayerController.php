@@ -13,21 +13,54 @@ use Illuminate\Support\Facades\DB;
 
 class PlayerController extends Controller
 {
+    /**
+     * LISTA PUBBLICA PER UTENTI
+     * Mostra solo i calciatori che non appartengono a nessuna squadra della lega attuale.
+     */
     public function index()
     {
         $league = auth()->user()->leagues()->first();
         if (!$league) return redirect()->route('dashboard');
+
+        // Prendiamo gli ID dei calciatori già venduti in questa lega
         $soldIds = Roster::where('league_id', $league->id)->pluck('real_player_id')->toArray();
-        $available = RealPlayer::whereNotIn('id', $soldIds)->orderBy('role', 'desc')->orderBy('name', 'asc')->get();
+
+        // Filtriamo il listone escludendo i venduti
+        $available = RealPlayer::whereNotIn('id', $soldIds)
+            ->orderByRaw("FIELD(role, 'P', 'D', 'C', 'A')")
+            ->orderBy('name', 'asc')
+            ->get();
+
         return Inertia::render('Players/Index', ['players' => $available]);
     }
 
+    /**
+     * LISTA PER ADMIN (GESTIONE)
+     * Mostra tutti i calciatori e indica se sono già in una squadra.
+     */
     public function adminIndex()
     {
-        $players = RealPlayer::orderBy('role', 'desc')->orderBy('name', 'asc')->get();
+        $league = auth()->user()->leagues()->first();
+        $players = RealPlayer::orderByRaw("FIELD(role, 'P', 'D', 'C', 'A')")
+            ->orderBy('name', 'asc')
+            ->get();
+
+        // Aggiungiamo l'informazione sul proprietario per ogni giocatore
+        if ($league) {
+            foreach ($players as $p) {
+                $p->owner = Roster::where('real_player_id', $p->id)
+                    ->where('league_id', $league->id)
+                    ->with('user')
+                    ->first();
+            }
+        }
+
         return Inertia::render('Admin/Players', ['players' => $players]);
     }
 
+    /**
+     * SALVA SINGOLO CALCIATORE
+     */
     public function store(Request $request)
     {
         $request->validate([
@@ -44,13 +77,15 @@ class PlayerController extends Controller
             'quotation' => 1
         ]);
 
-        return back();
+        return back()->with('message', 'Calciatore creato!');
     }
 
-    // --- LOGICA AGGIORNAMENTO MASSIVO ---
+    /**
+     * AGGIORNAMENTO MASSIVO QUOTAZIONI
+     * Usato per aggiornare solo i prezzi da una lista Nome,Quotazione.
+     */
     public function massUpdateQuotations(Request $request)
     {
-        // Usiamo un nome che non andrà MAI in conflitto: list_to_update
         $inputList = $request->input('list_to_update');
 
         if (!is_array($inputList)) {
@@ -59,9 +94,8 @@ class PlayerController extends Controller
 
         foreach ($inputList as $item) {
             $cleanName = trim($item['name']);
-            // Cerchiamo il giocatore nel database
             $player = RealPlayer::where('name', 'LIKE', $cleanName)->first();
-            
+           
             if ($player) {
                 $player->update([
                     'quotation' => (int)$item['quotation']
@@ -69,50 +103,63 @@ class PlayerController extends Controller
             }
         }
 
-        return back()->with('message', 'Aggiornamento completato!');
+        return back()->with('message', 'Quotazioni aggiornate!');
     }
 
+    /**
+     * IMPORTATORE MASTER (UPSERT)
+     * Crea i nuovi o aggiorna gli esistenti (Nome, Ruolo, Squadra, Quotazione).
+     */
+    public function bulkImport(Request $request)
+    {
+        $list = $request->input('players_list');
+
+        if (!is_array($list)) {
+            return back()->withErrors(['error' => 'Dati non validi.']);
+        }
+
+        foreach ($list as $item) {
+            $name = trim($item['name']);
+            $role = strtoupper(trim($item['role']));
+            $team = trim($item['team']);
+            $quotation = (int)$item['quotation'];
+
+            // Logica Upsert: cerca per nome, aggiorna o crea.
+            RealPlayer::updateOrCreate(
+                ['name' => $name],
+                [
+                    'role' => $role,
+                    'real_team' => $team,
+                    'quotation' => $quotation,
+                    'initial_value' => $quotation 
+                ]
+            );
+        }
+
+        return back()->with('message', 'Listone sincronizzato con successo!');
+    }
+
+    /**
+     * ELIMINAZIONE CALCIATORE (CASCADE)
+     */
     public function destroy(RealPlayer $player)
     {
         DB::transaction(function () use ($player) {
+            // Rimuoviamo il giocatore da tutte le rose
             Roster::where('real_player_id', $player->id)->delete();
+            
+            // Rimuoviamo dalle formazioni
             LineupDetail::where('real_player_id', $player->id)->delete();
+            
+            // Puliamo le aste e i rilanci automatici collegati
             $auctionIds = Auction::where('real_player_id', $player->id)->pluck('id');
             Autobid::whereIn('auction_id', $auctionIds)->delete();
             Auction::where('real_player_id', $player->id)->delete();
+            
+            // Infine eliminiamo il record principale
             $player->delete();
         });
 
-        return back();
+        return back()->with('message', 'Calciatore rimosso dal sistema.');
     }
-    public function bulkImport(Request $request)
-{
-    $list = $request->input('players_list');
-
-    if (!is_array($list)) {
-        return back()->withErrors(['error' => 'Dati non validi.']);
-    }
-
-    foreach ($list as $item) {
-        // Pulizia dei dati
-        $name = trim($item['name']);
-        $role = strtoupper(trim($item['role']));
-        $team = trim($item['team']);
-        $quotation = (int)$item['quotation'];
-
-        // Comando Magico: Cerca per nome, se lo trovi aggiorna i dati, 
-        // se non lo trovi crealo con questi dati.
-        \App\Models\RealPlayer::updateOrCreate(
-            ['name' => $name], // Condizione di ricerca
-            [
-                'role' => $role,
-                'real_team' => $team,
-                'quotation' => $quotation,
-                'initial_value' => $quotation // Impostiamo anche il valore iniziale uguale alla quotazione
-            ]
-        );
-    }
-
-    return back()->with('message', 'Listone aggiornato con successo!');
-}
 }
