@@ -3,11 +3,16 @@ import { ref, computed } from 'vue';
 import NavLink from '@/Components/NavLink.vue';
 import Dropdown from '@/Components/Dropdown.vue';
 import DropdownLink from '@/Components/DropdownLink.vue';
-import ResponsiveNavLink from '@/Components/ResponsiveNavLink.vue'; // FONDAMENTALE PER MOBILE
+import ResponsiveNavLink from '@/Components/ResponsiveNavLink.vue';
 import { Link, usePage } from '@inertiajs/vue3';
 
-// Variabile per aprire/chiudere il menu su cellulare
+// Controlli apertura menu mobile
 const showingNavigationDropdown = ref(false);
+
+// Controlli apertura tendine interne al mobile
+const openSocieta = ref(false);
+const openMercato = ref(false);
+const openGestione = ref(false);
 
 const user = usePage().props.auth.user;
 const leagues = computed(() => usePage().props.leagues || []);
@@ -18,7 +23,7 @@ const isAdmin = computed(() => hasLeague.value && leagues.value[0].admin_id === 
 <template>
     <div class="min-h-screen bg-gray-100 font-sans">
         <nav class="bg-white border-b border-gray-100 shadow-sm sticky top-0 z-50">
-            <!-- Menu Principale -->
+            <!-- BARRA SUPERIORE -->
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div class="flex justify-between h-16">
                     <div class="flex">
@@ -29,12 +34,11 @@ const isAdmin = computed(() => hasLeague.value && leagues.value[0].admin_id === 
                             </Link>
                         </div>
 
-                        <!-- LINK DESKTOP (Scompaiono su mobile) -->
+                        <!-- MENU DESKTOP (Invariato) -->
                         <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
                             <NavLink :href="route('dashboard')" :active="route().current('dashboard')">Home</NavLink>
                             
                             <template v-if="hasLeague">
-                                <!-- Tendina Società Desktop -->
                                 <div class="hidden sm:flex sm:items-center">
                                     <Dropdown align="left" width="48">
                                         <template #trigger>
@@ -50,7 +54,6 @@ const isAdmin = computed(() => hasLeague.value && leagues.value[0].admin_id === 
                                     </Dropdown>
                                 </div>
 
-                                <!-- Tendina Mercato Desktop -->
                                 <div class="hidden sm:flex sm:items-center">
                                     <Dropdown align="left" width="48">
                                         <template #trigger>
@@ -68,7 +71,6 @@ const isAdmin = computed(() => hasLeague.value && leagues.value[0].admin_id === 
 
                             <NavLink :href="route('players.index')" :active="route().current('players.index')">Svincolati</NavLink>
 
-                            <!-- Tendina Gestione Admin Desktop -->
                             <div v-if="isAdmin" class="hidden sm:flex sm:items-center ms-4">
                                 <Dropdown align="right" width="48">
                                     <template #trigger>
@@ -85,9 +87,9 @@ const isAdmin = computed(() => hasLeague.value && leagues.value[0].admin_id === 
                         </div>
                     </div>
 
-                    <!-- BOTTONE HAMBURGER (Solo per Mobile) -->
+                    <!-- TASTO BURGER MOBILE -->
                     <div class="-me-2 flex items-center sm:hidden">
-                        <button @click="showingNavigationDropdown = !showingNavigationDropdown" class="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 transition duration-150 ease-in-out">
+                        <button @click="showingNavigationDropdown = !showingNavigationDropdown" class="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 transition">
                             <svg class="h-6 w-6" stroke="currentColor" fill="none" viewBox="0 0 24 24">
                                 <path :class="{'hidden': showingNavigationDropdown, 'inline-flex': !showingNavigationDropdown }" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
                                 <path :class="{'hidden': !showingNavigationDropdown, 'inline-flex': showingNavigationDropdown }" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l18 18" />
@@ -95,7 +97,7 @@ const isAdmin = computed(() => hasLeague.value && leagues.value[0].admin_id === 
                         </button>
                     </div>
 
-                    <!-- Menu Profilo Desktop -->
+                    <!-- Profilo Destra Desktop -->
                     <div class="hidden sm:flex sm:items-center">
                         <Dropdown align="right" width="48">
                             <template #trigger><button class="uppercase font-bold text-xs text-gray-500">{{ user.name }} ▼</button></template>
@@ -108,40 +110,63 @@ const isAdmin = computed(() => hasLeague.value && leagues.value[0].admin_id === 
                 </div>
             </div>
 
-            <!-- MENU MOBILE (Il Pannello che compare cliccando il tasto) -->
-            <div :class="{'block': showingNavigationDropdown, 'hidden': !showingNavigationDropdown}" class="sm:hidden bg-white border-t border-gray-100 shadow-xl overflow-y-auto max-h-[80vh]">
+            <!-- MENU MOBILE RESPONSIVE -->
+            <div :class="{'block': showingNavigationDropdown, 'hidden': !showingNavigationDropdown}" class="sm:hidden bg-white border-t border-gray-100 shadow-2xl overflow-y-auto max-h-[90vh]">
                 <div class="pt-2 pb-3 space-y-1">
                     <ResponsiveNavLink :href="route('dashboard')" :active="route().current('dashboard')">Home</ResponsiveNavLink>
                     
                     <template v-if="hasLeague">
-                        <div class="px-4 py-2 text-[10px] font-black text-gray-400 uppercase border-b bg-gray-50">Società</div>
-                        <ResponsiveNavLink :href="route('societa.index')">Anagrafe Lega</ResponsiveNavLink>
-                        <ResponsiveNavLink :href="route('teams.index')">Rose Avversarie</ResponsiveNavLink>
-                        <ResponsiveNavLink :href="route('roster.index')">La mia Rosa</ResponsiveNavLink>
+                        <!-- TENDINA SOCIETÀ MOBILE -->
+                        <div>
+                            <button @click="openSocieta = !openSocieta" class="flex items-center justify-between w-full pl-3 pr-4 py-2 border-l-4 border-transparent text-left text-base font-bold text-gray-600 hover:text-gray-800 hover:bg-gray-50 transition uppercase">
+                                Società
+                                <svg class="h-4 w-4 transition-transform duration-200" :class="{'rotate-180': openSocieta}" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+                            </button>
+                            <div v-show="openSocieta" class="bg-gray-50 py-1">
+                                <ResponsiveNavLink :href="route('societa.index')" class="pl-8 text-sm">Anagrafe Lega</ResponsiveNavLink>
+                                <ResponsiveNavLink :href="route('teams.index')" class="pl-8 text-sm">Rose Avversarie</ResponsiveNavLink>
+                                <ResponsiveNavLink :href="route('roster.index')" class="pl-8 text-sm">La mia Rosa</ResponsiveNavLink>
+                            </div>
+                        </div>
 
-                        <div class="px-4 py-2 text-[10px] font-black text-gray-400 uppercase border-b bg-gray-50 mt-2">Calciomercato</div>
-                        <ResponsiveNavLink :href="route('market.auctions')">Aste e Scambi</ResponsiveNavLink>
-                        <ResponsiveNavLink :href="route('market.history')">Cronologia Movimenti</ResponsiveNavLink>
+                        <!-- TENDINA CALCIOMERCATO MOBILE -->
+                        <div>
+                            <button @click="openMercato = !openMercato" class="flex items-center justify-between w-full pl-3 pr-4 py-2 border-l-4 border-transparent text-left text-base font-bold text-gray-600 hover:text-gray-800 hover:bg-gray-50 transition uppercase">
+                                Calciomercato
+                                <svg class="h-4 w-4 transition-transform duration-200" :class="{'rotate-180': openMercato}" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+                            </button>
+                            <div v-show="openMercato" class="bg-gray-50 py-1">
+                                <ResponsiveNavLink :href="route('market.auctions')" class="pl-8 text-sm">Aste e Scambi</ResponsiveNavLink>
+                                <ResponsiveNavLink :href="route('market.history')" class="pl-8 text-sm">Cronologia Movimenti</ResponsiveNavLink>
+                            </div>
+                        </div>
                     </template>
 
                     <ResponsiveNavLink :href="route('players.index')">Svincolati</ResponsiveNavLink>
 
-                    <!-- SEZIONE GESTIONE MOBILE -->
-                    <template v-if="isAdmin">
-                        <div class="px-4 py-2 text-[10px] font-black text-red-600 uppercase border-b bg-red-50 mt-2">⚙️ Amministrazione</div>
-                        <ResponsiveNavLink :href="route('market.sessions')">Nuova Sessione</ResponsiveNavLink>
-                        <ResponsiveNavLink :href="route('admin.rosters')">Gestione Rose</ResponsiveNavLink>
-                        <ResponsiveNavLink :href="route('admin.credits')">Gestione Budget</ResponsiveNavLink>
-                        <ResponsiveNavLink :href="route('admin.players')">Gestione Listone</ResponsiveNavLink>
-                    </template>
+                    <!-- TENDINA GESTIONE MOBILE -->
+                    <div v-if="isAdmin">
+                        <button @click="openGestione = !openGestione" class="flex items-center justify-between w-full pl-3 pr-4 py-2 border-l-4 border-transparent text-left text-base font-bold text-red-600 hover:bg-red-50 transition uppercase">
+                            ⚙️ Gestione
+                            <svg class="h-4 w-4 transition-transform duration-200" :class="{'rotate-180': openGestione}" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+                        </button>
+                        <div v-show="openGestione" class="bg-red-50/30 py-1 border-l-4 border-red-200">
+                            <ResponsiveNavLink :href="route('market.sessions')" class="pl-8 text-sm">Nuova Sessione</ResponsiveNavLink>
+                            <ResponsiveNavLink :href="route('admin.rosters')" class="pl-8 text-sm">Gestione Rose</ResponsiveNavLink>
+                            <ResponsiveNavLink :href="route('admin.credits')" class="pl-8 text-sm">Gestione Budget</ResponsiveNavLink>
+                            <ResponsiveNavLink :href="route('admin.players')" class="pl-8 text-sm">Gestione Listone</ResponsiveNavLink>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- PROFILO MOBILE -->
                 <div class="pt-4 pb-1 border-t border-gray-200 bg-gray-50">
-                    <div class="px-4"><div class="font-bold text-base text-gray-800 uppercase">{{ user.name }}</div></div>
+                    <div class="px-4 flex justify-between items-center">
+                        <div class="font-black text-blue-600 uppercase">{{ user.name }}</div>
+                        <Link :href="route('profile.edit')" class="text-xs text-gray-400 underline uppercase font-bold">Profilo</Link>
+                    </div>
                     <div class="mt-3 space-y-1">
-                        <ResponsiveNavLink :href="route('profile.edit')">Il tuo Profilo</ResponsiveNavLink>
-                        <ResponsiveNavLink :href="route('logout')" method="post" as="button">Esci dal portale</ResponsiveNavLink>
+                        <ResponsiveNavLink :href="route('logout')" method="post" as="button" class="text-red-500 font-bold">Esci dal portale</ResponsiveNavLink>
                     </div>
                 </div>
             </div>
