@@ -69,6 +69,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/market/sessions', [MarketController::class, 'storeSession'])->name('market.sessions.store');
     Route::post('/market/close-all/{league}', [MarketController::class, 'closeMarketNow'])->name('market.close-all');
     Route::post('/leagues/{league}/update-market', [LeagueController::class, 'updateMarket'])->name('leagues.market.update');
+    Route::post('/profile/team-logo', [ProfileController::class, 'updateTeamLogo'])->name('profile.team.logo');
 
     // PROFILO
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
