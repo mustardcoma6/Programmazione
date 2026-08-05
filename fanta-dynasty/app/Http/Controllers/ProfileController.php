@@ -53,28 +53,25 @@ class ProfileController extends Controller
     public function updateTeamLogo(Request $request): RedirectResponse
     {
         $request->validate([
-            'logo' => 'required|image|mimes:jpg,jpeg,png|max:2048', // Immagine max 2MB
+            'logo' => 'required|image|mimes:jpg,jpeg,png|max:2048',
         ]);
 
         $user = auth()->user();
         $participant = LeagueParticipant::where('user_id', $user->id)->first();
 
         if ($request->hasFile('logo') && $participant) {
-            // Eliminiamo il vecchio logo se esiste per non sprecare spazio
-            if ($participant->logo_path) {
-                $oldPath = str_replace('/storage/', '', $participant->logo_path);
-                Storage::disk('public')->delete($oldPath);
-            }
-
-            // Salviamo il nuovo file
+            // Salviamo il file nel disco 'public'
             $path = $request->file('logo')->store('logos', 'public');
             
+            // Generiamo l'URL completo (es. https://tuosito.railway.app/storage/logos/xxx.png)
+            $fullUrl = asset('storage/' . $path);
+            
             $participant->update([
-                'logo_path' => '/storage/' . $path
+                'logo_path' => $fullUrl
             ]);
         }
 
-        return Redirect::route('profile.edit')->with('message', 'Logo aggiornato con successo!');
+        return Redirect::route('profile.edit')->with('message', 'Logo aggiornato!');
     }
 
     public function destroy(Request $request): RedirectResponse
