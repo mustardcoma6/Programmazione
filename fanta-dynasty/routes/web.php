@@ -15,7 +15,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/rosa', [MarketController::class, 'myRosterPage'])->name('roster.index');
     Route::get('/teams', [TeamController::class, 'index'])->name('teams.index');
     Route::get('/societa/formazione', function() { return redirect()->route('lineup.index'); })->name('roster.lineup');
-    Route::get('/societa/finanze', function() { return redirect()->route('roster.index'); })->name('roster.finances');
+    Route::get('/societa/finanze', [MarketController::class, 'financesPage'])->name('roster.finances');
 
     // LEGA
     Route::get('/societa', [LeagueController::class, 'societaIndex'])->name('societa.index');

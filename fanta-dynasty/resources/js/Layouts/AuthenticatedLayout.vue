@@ -52,6 +52,7 @@ const isAdmin = computed(() => {
                                             <DropdownLink :href="route('roster.index')"> La mia Rosa </DropdownLink>
                                             <DropdownLink :href="route('teams.index')"> Rose Avversarie </DropdownLink>
                                             <DropdownLink :href="route('roster.lineup')"> Formazione </DropdownLink>
+                                            <DropdownLink :href="route('roster.finances')"> Finanze </DropdownLink>
                                         </template>
                                     </Dropdown>
                                 </div>
