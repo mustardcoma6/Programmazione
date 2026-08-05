@@ -49,9 +49,11 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/admin/mercato/sessioni', [MarketController::class, 'sessions'])->name('market.sessions');
     Route::get('/admin/gestione-rose', [LeagueController::class, 'manageRosters'])->name('admin.rosters');
     Route::get('/admin/gestione-budget', [LeagueController::class, 'manageCredits'])->name('admin.credits');
+    // GESTIONE LISTONE
     Route::get('/admin/gestione-listone', [PlayerController::class, 'adminIndex'])->name('admin.players');
     Route::post('/admin/players', [PlayerController::class, 'store'])->name('admin.players.store');
     Route::delete('/admin/players/{player}', [PlayerController::class, 'destroy'])->name('admin.players.destroy');
+    Route::post('/admin/players/mass-update', [PlayerController::class, 'massUpdateQuotations'])->name('admin.players.mass-update');
     Route::post('/admin/update-resources', [LeagueController::class, 'updateResources'])->name('admin.resources.update');
     Route::post('/admin/assign-player', [LeagueController::class, 'assignPlayer'])->name('admin.assign');
     Route::post('/admin/assign-manual', [LeagueController::class, 'assignManualPlayer'])->name('admin.assign.manual');

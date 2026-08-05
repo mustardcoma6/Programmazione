@@ -9,39 +9,48 @@ const props = defineProps({ players: Array });
 const form = useForm({ name: '', role: 'D', real_team: '' });
 const submit = () => form.post(route('admin.players.store'), { onSuccess: () => form.reset() });
 
-// --- LOGICA AGGIORNAMENTO MASSIVO ---
+// --- LOGICA AGGIORNAMENTO MASSIVO (CORRETTA) ---
 const bulkText = ref('');
 const bulkForm = useForm({ data: [] });
 
 const processBulk = () => {
-    // Trasformiamo il testo incollato in un elenco che il computer capisce
-    // Formato richiesto: Nome,Quotazione (una per riga)
+    if (!bulkText.value.trim()) return alert("Incolla prima i dati!");
+
     const lines = bulkText.value.split('\n');
     const updateData = [];
     
     lines.forEach(line => {
-        const parts = line.split(',');
-        if (parts.length === 2) {
+        // Supportiamo sia la virgola che il punto e virgola (tipico di Excel)
+        const separator = line.includes(';') ? ';' : ',';
+        const parts = line.split(separator);
+        
+        if (parts.length >= 2) {
             updateData.push({
                 name: parts[0].trim(),
-                quotation: parseInt(parts[1].trim())
+                quotation: parts[1].trim().replace(/[^0-9]/g, '') // Prende solo i numeri
             });
         }
     });
 
-    if (updateData.length === 0) return alert("Formato non valido! Usa: Nome,Quotazione");
+    if (updateData.length === 0) {
+        alert("Formato non riconosciuto. Usa: Nome,Quotazione");
+        return;
+    }
     
+    // Spediamo i dati
     bulkForm.data = updateData;
     bulkForm.post(route('admin.players.mass-update'), {
+        preserveScroll: true,
         onSuccess: () => {
             bulkText.value = '';
-            alert("Quotazioni aggiornate!");
-        }
+            alert("✅ Tutte le quotazioni trovate sono state aggiornate!");
+        },
+        onError: () => alert("❌ Errore nel server durante l'aggiornamento.")
     });
 };
 
 const deletePlayer = (p) => {
-    if (confirm(`Eliminare ${p.name}?`)) {
+    if (confirm(`Eliminare definitivamente ${p.name}?`)) {
         useForm({}).delete(route('admin.players.destroy', p.id), { preserveScroll: true });
     }
 };
@@ -75,21 +84,33 @@ const filteredPlayers = computed(() => props.players.filter(p => p.name.toLowerC
 
                 <!-- AGGIORNAMENTO MASSIVO QUOTAZIONI -->
                 <div class="bg-white p-6 shadow rounded-xl border-t-4 border-green-600">
-                    <h3 class="font-black uppercase text-xs mb-2 text-gray-400">Aggiorna Quotazioni (Bulk)</h3>
-                    <p class="text-[9px] text-gray-400 uppercase mb-4 italic">Incolla da Excel/Sheets nel formato: Nome,Quotazione</p>
+                    <h3 class="font-black uppercase text-xs mb-2 text-gray-400">Aggiorna Quotazioni (Incolla da Excel)</h3>
+                    <p class="text-[9px] text-gray-400 uppercase mb-4 italic leading-tight">
+                        Copia due colonne (Nome e Quotazione) e incollale qui.<br>
+                        Il formato deve essere: Nome,Valore
+                    </p>
                     <textarea 
                         v-model="bulkText" 
                         rows="5" 
-                        class="w-full rounded-lg border-gray-300 text-xs font-mono"
-                        placeholder="Lautaro Martinez,42&#10;Mike Maignan,19"
+                        class="w-full rounded-lg border-gray-300 text-xs font-mono bg-gray-50 p-3"
+                        placeholder="Lautaro Martinez,42&#10;Nicolo Barella,20"
                     ></textarea>
-                    <button @click="processBulk" class="mt-4 w-full bg-green-600 text-white py-2 rounded-lg font-black uppercase text-xs">Aggiorna Tutto</button>
+                    <button 
+                        @click="processBulk" 
+                        :disabled="bulkForm.processing"
+                        class="mt-4 w-full bg-green-600 text-white py-3 rounded-lg font-black uppercase text-xs shadow-md hover:bg-green-700 transition"
+                    >
+                        {{ bulkForm.processing ? 'Aggiornamento in corso...' : 'Aggiorna Tutto' }}
+                    </button>
                 </div>
             </div>
 
             <!-- TABELLA -->
             <div class="bg-white shadow rounded-xl overflow-hidden border">
-                <div class="p-4 bg-gray-50 border-b"><input v-model="search" type="text" placeholder="Cerca..." class="w-full max-w-sm rounded-lg border-gray-300 text-sm"></div>
+                <div class="p-4 bg-gray-50 border-b flex justify-between items-center">
+                    <input v-model="search" type="text" placeholder="Cerca nel listone..." class="w-full max-w-sm rounded-lg border-gray-300 text-sm">
+                    <span class="text-[10px] font-black text-gray-400 uppercase">Totale: {{ players.length }}</span>
+                </div>
                 <table class="w-full text-left">
                     <thead>
                         <tr class="bg-gray-100 text-[10px] font-black uppercase text-gray-400">
@@ -102,9 +123,14 @@ const filteredPlayers = computed(() => props.players.filter(p => p.name.toLowerC
                     <tbody>
                         <tr v-for="p in filteredPlayers" :key="p.id" class="border-b hover:bg-gray-50 transition">
                             <td class="p-4"><span class="font-bold text-blue-600">{{ p.role }}</span></td>
-                            <td class="p-4 font-black uppercase text-sm">{{ p.name }}</td>
-                            <td class="p-4 text-center font-mono font-bold text-green-600">{{ p.quotation }} cr</td>
-                            <td class="p-4 text-right"><button @click="deletePlayer(p)" class="text-red-500 font-bold uppercase text-[10px]">Elimina</button></td>
+                            <td class="p-4 font-black uppercase text-sm text-gray-800">{{ p.name }}</td>
+                            <td class="p-4 text-center">
+                                <span class="font-mono font-black text-green-600 text-lg">{{ p.quotation }}</span>
+                                <span class="text-[10px] text-gray-400 ml-1">cr</span>
+                            </td>
+                            <td class="p-4 text-right">
+                                <button @click="deletePlayer(p)" class="text-red-500 font-bold uppercase text-[10px]">Elimina</button>
+                            </td>
                         </tr>
                     </tbody>
                 </table>

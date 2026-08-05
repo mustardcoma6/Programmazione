@@ -83,18 +83,11 @@ class PlayerController extends Controller
 
         return back()->with('message', 'Giocatore eliminato ovunque con successo.');
     }
-    public function massUpdateQuotations(Request $request)
-    {
-        $request->validate(['data' => 'required|array']);
-
-        foreach ($request->data as $item) {
-            // Cerchiamo il giocatore per nome e aggiorniamo la quotazione
-            $player = RealPlayer::where('name', $item['name'])->first();
-            if ($player) {
-                $player->update(['quotation' => $item['quotation']]);
-            }
-        }
-
-        return back()->with('message', 'Quotazioni aggiornate!');
-    }
+    // GESTIONE LISTONE
+    Route::get('/admin/gestione-listone', [PlayerController::class, 'adminIndex'])->name('admin.players');
+    Route::post('/admin/players', [PlayerController::class, 'store'])->name('admin.players.store');
+    Route::delete('/admin/players/{player}', [PlayerController::class, 'destroy'])->name('admin.players.destroy');
+    
+    // QUESTA RIGA DEVE ESSERE ESATTAMENTE COSÌ
+    Route::post('/admin/players/mass-update', [PlayerController::class, 'massUpdateQuotations'])->name('admin.players.mass-update');
 }
