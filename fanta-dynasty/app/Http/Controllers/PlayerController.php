@@ -83,4 +83,18 @@ class PlayerController extends Controller
 
         return back()->with('message', 'Giocatore eliminato ovunque con successo.');
     }
+    public function massUpdateQuotations(Request $request)
+    {
+        $request->validate(['data' => 'required|array']);
+
+        foreach ($request->data as $item) {
+            // Cerchiamo il giocatore per nome e aggiorniamo la quotazione
+            $player = RealPlayer::where('name', $item['name'])->first();
+            if ($player) {
+                $player->update(['quotation' => $item['quotation']]);
+            }
+        }
+
+        return back()->with('message', 'Quotazioni aggiornate!');
+    }
 }
