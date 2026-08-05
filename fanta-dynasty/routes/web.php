@@ -9,13 +9,11 @@ Route::get('/', function () { return Inertia::render('Welcome'); });
 Route::middleware(['auth'])->group(function () {
     
     // HOME
-   Route::get('/dashboard', function () {
+    Route::get('/dashboard', function () {
         $user = auth()->user();
         $leagues = $user->leagues()->get(); 
         $firstLeague = $leagues->first();
-        
-        $myData = null; $myPlayers = []; $currentLineup = null; $allParticipants = []; 
-        $isMarketOpen = false; $stats = null;
+        $myData = null; $myPlayers = []; $currentLineup = null; $allParticipants = []; $isMarketOpen = false; $stats = null;
 
         if ($firstLeague) {
             $myData = \App\Models\LeagueParticipant::where('league_id', $firstLeague->id)->where('user_id', $user->id)->first();
@@ -23,50 +21,32 @@ Route::middleware(['auth'])->group(function () {
             $currentLineup = \App\Models\Lineup::where('league_id', $firstLeague->id)->where('user_id', $user->id)->where('matchday', 1)->with('details.player')->first();
             $allParticipants = \App\Models\LeagueParticipant::where('league_id', $firstLeague->id)->orderBy('remaining_budget', 'desc')->get();
             $isMarketOpen = \App\Models\MarketSession::where('league_id', $firstLeague->id)->where('start_at', '<=', now())->where('end_at', '>=', now())->exists();
-
-            // 1. Giocatore più pagato
+            $spentTodayCredits = \App\Models\Roster::where('user_id', $user->id)->where('league_id', $firstLeague->id)->whereDate('created_at', \Carbon\Carbon::today())->sum('purchase_price');
+            $spentTodayYears = \App\Models\Roster::where('user_id', $user->id)->where('league_id', $firstLeague->id)->whereDate('created_at', \Carbon\Carbon::today())->sum('contract_years');
             $topSigning = \App\Models\Roster::where('user_id', $user->id)->where('league_id', $firstLeague->id)->with('player')->orderBy('purchase_price', 'desc')->first();
-
-            // 2. Posizione in classifica economica
             $rank = \App\Models\LeagueParticipant::where('league_id', $firstLeague->id)->where('remaining_budget', '>', $myData->remaining_budget)->count() + 1;
-
-            $stats = [
-                'topPlayer' => $topSigning ? $topSigning->player->name : 'Nessuno',
-                'topPrice' => $topSigning ? $topSigning->purchase_price : 0,
-                'rank' => $rank,
-                'totalParticipants' => count($allParticipants)
-            ];
+            $stats = ['spentToday' => $spentTodayCredits, 'yearsToday' => $spentTodayYears, 'topPlayer' => $topSigning ? $topSigning->player->name : 'Nessuno', 'topPrice' => $topSigning ? $topSigning->purchase_price : 0, 'rank' => $rank, 'totalParticipants' => count($allParticipants)];
         }
 
-        return Inertia::render('Dashboard', [
-            'leagues' => $leagues,
-            'myData' => $myData,
-            'myPlayers' => $myPlayers,
-            'currentLineup' => $currentLineup,
-            'allParticipants' => $allParticipants,
-            'isMarketOpen' => (bool)$isMarketOpen,
-            'stats' => $stats
-        ]);
+        return Inertia::render('Dashboard', ['leagues' => $leagues, 'myData' => $myData, 'myPlayers' => $myPlayers, 'currentLineup' => $currentLineup, 'allParticipants' => $allParticipants, 'isMarketOpen' => (bool)$isMarketOpen, 'stats' => $stats]);
     })->name('dashboard');
 
-    // SEZIONE SOCIETÀ
+    // SEZIONE SOCIETÀ (Tua gestione)
     Route::get('/rosa', [MarketController::class, 'myRosterPage'])->name('roster.index');
-    Route::get('/teams', [TeamController::class, 'index'])->name('teams.index');
-    // Rotte temporanee Società
     Route::get('/societa/formazione', function() { return redirect()->route('lineup.index'); })->name('roster.lineup');
     Route::get('/societa/finanze', function() { return redirect()->route('roster.index'); })->name('roster.finances');
-    Route::get('/societa/sala-trofei', function() { return redirect()->route('roster.index'); })->name('roster.trophies');
 
-    // SEZIONE LEGA
+    // SEZIONE LEGA (Confronto e Mercato)
     Route::get('/societa', [LeagueController::class, 'societaIndex'])->name('societa.index');
+    Route::get('/teams', [TeamController::class, 'index'])->name('teams.index');
     Route::get('/players', [PlayerController::class, 'index'])->name('players.index');
+    Route::get('/lega/sala-trofei', function() { return redirect()->route('societa.index'); })->name('league.trophies');
+    Route::get('/lega/ranking', function() { return redirect()->route('societa.index'); })->name('league.ranking'); // NUOVA
 
-    // CALCIOMERCATO
+    // CALCIOMERCATO E GESTIONE...
     Route::get('/calciomercato', [MarketController::class, 'auctions'])->name('market.auctions');
     Route::get('/admin/mercato/cronologia', [MarketController::class, 'history'])->name('market.history');
     Route::get('/admin/mercato/sessioni', [MarketController::class, 'sessions'])->name('market.sessions');
-
-    // GESTIONE ADMIN
     Route::get('/admin/gestione-rose', [LeagueController::class, 'manageRosters'])->name('admin.rosters');
     Route::get('/admin/gestione-budget', [LeagueController::class, 'manageCredits'])->name('admin.credits');
     Route::get('/admin/gestione-listone', [PlayerController::class, 'adminIndex'])->name('admin.players');
@@ -77,8 +57,6 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/admin/assign-manual', [LeagueController::class, 'assignManualPlayer'])->name('admin.assign.manual');
     Route::post('/admin/remove-player', [LeagueController::class, 'removePlayer'])->name('admin.remove');
     Route::delete('/admin/kick-participant/{participant}', [LeagueController::class, 'kickParticipant'])->name('admin.participant.kick');
-
-    // AZIONI UTENTE
     Route::post('/buy-player', [MarketController::class, 'buy'])->name('players.buy');
     Route::post('/release-player', [MarketController::class, 'release'])->name('players.release');
     Route::post('/market/update-years', [MarketController::class, 'updateContract'])->name('market.update-years');
@@ -87,7 +65,6 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/market/sessions', [MarketController::class, 'storeSession'])->name('market.sessions.store');
     Route::post('/market/close-all/{league}', [MarketController::class, 'closeMarketNow'])->name('market.close-all');
     Route::post('/leagues/{league}/update-market', [LeagueController::class, 'updateMarket'])->name('leagues.market.update');
-    Route::post('/profile/team-logo', [ProfileController::class, 'updateTeamLogo'])->name('profile.team.logo');
 
     // PROFILO
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
