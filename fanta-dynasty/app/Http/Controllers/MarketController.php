@@ -10,6 +10,8 @@ use Illuminate\Support\Facades\DB;
 
 class MarketController extends Controller
 {
+    // --- SEZIONE SOCIETÀ ---
+    
     public function myRosterPage() {
         $user = auth()->user();
         $participant = LeagueParticipant::where('user_id', $user->id)->first();
@@ -20,16 +22,22 @@ class MarketController extends Controller
         ]);
     }
 
-    // --- NUOVA FUNZIONE: PAGINA FINANZE SOCIETARIE ---
     public function financesPage() {
         $user = auth()->user();
         $participant = LeagueParticipant::where('user_id', $user->id)->first();
         if (!$participant) return redirect()->route('dashboard');
-
-        return Inertia::render('Societa/Finances', [
-            'myData' => $participant
-        ]);
+        return Inertia::render('Societa/Finances', ['myData' => $participant]);
     }
+
+    // NUOVA FUNZIONE: PRIMAVERA (PUNTO 5)
+    public function primaveraPage() {
+        $user = auth()->user();
+        $participant = LeagueParticipant::where('user_id', $user->id)->first();
+        if (!$participant) return redirect()->route('dashboard');
+        return Inertia::render('Societa/Primavera', ['myData' => $participant]);
+    }
+
+    // --- SEZIONE CALCIOMERCATO ---
 
     public function auctions() {
         $user = auth()->user();
@@ -55,7 +63,7 @@ class MarketController extends Controller
         if (!$session) return back()->withErrors(['error' => 'Mercato chiuso!']);
         $auction = Auction::where('league_id', $participant->league_id)->where('real_player_id', $request->player_id)->where('is_finished', false)->first();
         if (!$auction) {
-            if ($now->diffInMinutes($session->end_at, false) < 90) return back()->withErrors(['error' => 'Chiamate bloccate (manca meno di 1h 30m)']);
+            if (now()->diffInMinutes($session->end_at, false) < 90) return back()->withErrors(['error' => 'Chiamate bloccate (manca meno di 1h 30m)']);
             $auction = Auction::create(['league_id' => $participant->league_id, 'real_player_id' => $request->player_id, 'user_id' => $user->id, 'current_bid' => 0, 'expires_at' => now()->copy()->addMinutes($session->auction_duration), 'is_finished' => false]);
         }
         if ($request->max_autobid) Autobid::updateOrCreate(['auction_id' => $auction->id, 'user_id' => $user->id], ['max_bid' => $request->max_autobid]);
@@ -65,39 +73,13 @@ class MarketController extends Controller
         return back();
     }
 
-    private function executeBiddingWar($auction, $lastBidderId, $lastBidAmount) {
-        $bestOther = Autobid::where('auction_id', $auction->id)->where('user_id', '!=', $lastBidderId)->orderBy('max_bid', 'desc')->orderBy('created_at', 'asc')->first();
-        if ($bestOther) {
-            if ($bestOther->max_bid > $lastBidAmount) $auction->update(['user_id' => $bestOther->user_id, 'current_bid' => $lastBidAmount + 1]);
-            elseif ($bestOther->max_bid == $lastBidAmount) $auction->update(['user_id' => $bestOther->user_id, 'current_bid' => $lastBidAmount]);
-            else $auction->update(['user_id' => $lastBidderId, 'current_bid' => $lastBidAmount]);
-        } else { $auction->update(['user_id' => $lastBidderId, 'current_bid' => $lastBidAmount]); }
-    }
-
-    public function release(Request $request) {
-        $rosterItem = Roster::with('player')->findOrFail($request->roster_id);
-        $refund = ceil(($rosterItem->release_clause > 0 ? $rosterItem->release_clause : $rosterItem->purchase_price) / 2);
-        $p = LeagueParticipant::where('league_id', $rosterItem->league_id)->where('user_id', $rosterItem->user_id)->first();
-        if ($p) { $p->increment('remaining_budget', $refund); $p->decrement('years_budget', ($rosterItem->contract_years - floor($rosterItem->contract_years / 2))); }
-        $rosterItem->delete();
-        return back();
-    }
-
-    public function updateContract(Request $request) {
-        $rosterItem = Roster::findOrFail($request->roster_id);
-        $rosterItem->update(['contract_years' => $request->new_years, 'release_clause' => ($rosterItem->release_clause ?: $rosterItem->purchase_price) + $request->clausola_investment]);
-        return back();
-    }
-
+    // --- ALTRE LOGICHE ---
+    private function executeBiddingWar($auction, $lastBidderId, $lastBidAmount) { $bestOther = Autobid::where('auction_id', $auction->id)->where('user_id', '!=', $lastBidderId)->orderBy('max_bid', 'desc')->orderBy('created_at', 'asc')->first(); if ($bestOther) { if ($bestOther->max_bid > $lastBidAmount) $auction->update(['user_id' => $bestOther->user_id, 'current_bid' => $lastBidAmount + 1]); elseif ($bestOther->max_bid == $lastBidAmount) $auction->update(['user_id' => $bestOther->user_id, 'current_bid' => $lastBidAmount]); else $auction->update(['user_id' => $lastBidderId, 'current_bid' => $lastBidAmount]); } else { $auction->update(['user_id' => $lastBidderId, 'current_bid' => $lastBidAmount]); } }
+    public function release(Request $request) { $rosterItem = Roster::with('player')->findOrFail($request->roster_id); $refund = ceil(($rosterItem->release_clause > 0 ? $rosterItem->release_clause : $rosterItem->purchase_price) / 2); $p = LeagueParticipant::where('league_id', $rosterItem->league_id)->where('user_id', $rosterItem->user_id)->first(); if ($p) { $p->increment('remaining_budget', $refund); $p->decrement('years_budget', ($rosterItem->contract_years - floor($rosterItem->contract_years / 2))); } $rosterItem->delete(); return back(); }
+    public function updateContract(Request $request) { $rosterItem = Roster::findOrFail($request->roster_id); $rosterItem->update(['contract_years' => $request->new_years, 'release_clause' => ($rosterItem->release_clause ?: $rosterItem->purchase_price) + $request->clausola_investment]); return back(); }
     public function history() { $p = LeagueParticipant::where('user_id', auth()->id())->first(); return Inertia::render('Market/History', ['league' => League::find($p->league_id), 'movements' => Roster::where('league_id', $p->league_id)->with(['player', 'user'])->orderBy('created_at', 'desc')->get()]); }
     public function sessions() { $p = LeagueParticipant::where('user_id', auth()->id())->first(); return Inertia::render('Market/Sessions', ['league' => League::find($p->league_id), 'sessions' => MarketSession::where('league_id', $p->league_id)->orderBy('start_at', 'desc')->get()]); }
-    public function storeSession(Request $request) { 
-        $p = LeagueParticipant::where('user_id', auth()->id())->first();
-        $request->validate(['start_at' => 'required|date', 'end_at' => 'required|date|after:start_at', 'auction_time' => 'required', 'roles' => 'required|array']);
-        $timeParts = explode(':', $request->auction_time); $totalMinutes = ($timeParts[0] * 60) + $timeParts[1];
-        MarketSession::create(['league_id' => $p->league_id, 'start_at' => $request->start_at, 'end_at' => $request->end_at, 'auction_duration' => $totalMinutes, 'allowed_roles' => implode(',', $request->roles)]);
-        return back();
-    }
+    public function storeSession(Request $request) { $p = LeagueParticipant::where('user_id', auth()->id())->first(); $timeParts = explode(':', $request->auction_time); $totalMinutes = ($timeParts[0] * 60) + $timeParts[1]; MarketSession::create(['league_id' => $p->league_id, 'start_at' => $request->start_at, 'end_at' => $request->end_at, 'auction_duration' => $totalMinutes, 'allowed_roles' => implode(',', $request->roles)]); return back(); }
     public function closeMarketNow(League $league) { MarketSession::where('league_id', $league->id)->where('end_at', '>', now())->update(['end_at' => now()]); Auction::where('league_id', $league->id)->where('is_finished', false)->delete(); return redirect()->route('market.auctions'); }
     private function processExpiredAuctions($leagueId) { $now = Carbon::now('Europe/Rome'); DB::transaction(function () use ($leagueId, $now) { $expired = Auction::where('league_id', $leagueId)->where('is_finished', false)->where('expires_at', '<=', $now)->lockForUpdate()->get(); foreach ($expired as $auc) { Roster::create(['league_id' => $auc->league_id, 'user_id' => $auc->user_id, 'real_player_id' => $auc->real_player_id, 'purchase_price' => $auc->current_bid, 'contract_years' => 1]); $p = LeagueParticipant::where('league_id', $auc->league_id)->where('user_id', $auc->user_id)->first(); if($p) $p->decrement('remaining_budget', $auc->current_bid); $auc->update(['is_finished' => true]); } }); }
 }

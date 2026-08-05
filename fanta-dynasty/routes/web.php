@@ -11,18 +11,18 @@ Route::middleware(['auth'])->group(function () {
     // HOME
     Route::get('/dashboard', [LeagueController::class, 'dashboard'])->name('dashboard');
 
-    // SOCIETÀ
+    // --- SOCIETÀ ---
     Route::get('/rosa', [MarketController::class, 'myRosterPage'])->name('roster.index');
-    Route::get('/teams', [TeamController::class, 'index'])->name('teams.index');
     Route::get('/societa/formazione', function() { return redirect()->route('lineup.index'); })->name('roster.lineup');
     Route::get('/societa/finanze', [MarketController::class, 'financesPage'])->name('roster.finances');
+    Route::get('/societa/primavera', [MarketController::class, 'primaveraPage'])->name('roster.primavera'); // NUOVA
 
-    // LEGA
+    // --- LEGA ---
     Route::get('/societa', [LeagueController::class, 'societaIndex'])->name('societa.index');
+    Route::get('/teams', [TeamController::class, 'index'])->name('teams.index');
     Route::get('/players', [PlayerController::class, 'index'])->name('players.index');
     Route::get('/lega/ranking', function() { return redirect()->route('societa.index'); })->name('league.ranking');
     Route::get('/lega/sala-trofei', function() { return redirect()->route('societa.index'); })->name('league.trophies');
-
     // MERCATO
     Route::get('/calciomercato', [MarketController::class, 'auctions'])->name('market.auctions');
     Route::get('/admin/mercato/cronologia', [MarketController::class, 'history'])->name('market.history');
