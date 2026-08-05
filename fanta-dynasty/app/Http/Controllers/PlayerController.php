@@ -13,26 +13,21 @@ use Illuminate\Support\Facades\DB;
 
 class PlayerController extends Controller
 {
-    // LISTA PUBBLICA PER UTENTI
     public function index()
     {
         $league = auth()->user()->leagues()->first();
         if (!$league) return redirect()->route('dashboard');
-
         $soldIds = Roster::where('league_id', $league->id)->pluck('real_player_id')->toArray();
         $available = RealPlayer::whereNotIn('id', $soldIds)->orderBy('role', 'desc')->orderBy('name', 'asc')->get();
-
         return Inertia::render('Players/Index', ['players' => $available]);
     }
 
-    // LISTA PER ADMIN
     public function adminIndex()
     {
         $players = RealPlayer::orderBy('role', 'desc')->orderBy('name', 'asc')->get();
         return Inertia::render('Admin/Players', ['players' => $players]);
     }
 
-    // SALVA SINGOLO GIOCATORE
     public function store(Request $request)
     {
         $request->validate([
@@ -52,20 +47,20 @@ class PlayerController extends Controller
         return back();
     }
 
-    // AGGIORNAMENTO MASSIVO QUOTAZIONI
+    // --- LOGICA AGGIORNAMENTO MASSIVO ---
     public function massUpdateQuotations(Request $request)
     {
-        // Cambiato il nome della chiave da 'data' a 'players_list' per evitare conflitti
-        $list = $request->input('players_list');
+        // Usiamo un nome che non andrà MAI in conflitto: list_to_update
+        $inputList = $request->input('list_to_update');
 
-        if (!is_array($list)) {
-            return back()->withErrors(['error' => 'Formato lista non valido.']);
+        if (!is_array($inputList)) {
+            return back()->withErrors(['error' => 'Dati non validi.']);
         }
 
-        foreach ($list as $item) {
+        foreach ($inputList as $item) {
             $cleanName = trim($item['name']);
-            // Cerchiamo il giocatore
-            $player = \App\Models\RealPlayer::where('name', 'LIKE', $cleanName)->first();
+            // Cerchiamo il giocatore nel database
+            $player = RealPlayer::where('name', 'LIKE', $cleanName)->first();
             
             if ($player) {
                 $player->update([
@@ -74,10 +69,9 @@ class PlayerController extends Controller
             }
         }
 
-        return back()->with('message', 'Quotazioni aggiornate con successo!');
+        return back()->with('message', 'Aggiornamento completato!');
     }
 
-    // ELIMINA GIOCATORE
     public function destroy(RealPlayer $player)
     {
         DB::transaction(function () use ($player) {
