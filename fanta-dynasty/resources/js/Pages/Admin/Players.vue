@@ -9,9 +9,11 @@ const props = defineProps({ players: Array });
 const form = useForm({ name: '', role: 'D', real_team: '' });
 const submit = () => form.post(route('admin.players.store'), { onSuccess: () => form.reset() });
 
-// --- LOGICA AGGIORNAMENTO MASSIVO (CORRETTA) ---
+// --- LOGICA AGGIORNAMENTO MASSIVO (FIXATA) ---
 const bulkText = ref('');
-const bulkForm = useForm({ data: [] });
+const bulkForm = useForm({ 
+    players_list: [] // Abbiamo cambiato nome da 'data' a 'players_list'
+});
 
 const processBulk = () => {
     if (!bulkText.value.trim()) return alert("Incolla prima i dati!");
@@ -20,14 +22,13 @@ const processBulk = () => {
     const updateData = [];
     
     lines.forEach(line => {
-        // Supportiamo sia la virgola che il punto e virgola (tipico di Excel)
         const separator = line.includes(';') ? ';' : ',';
         const parts = line.split(separator);
         
         if (parts.length >= 2) {
             updateData.push({
                 name: parts[0].trim(),
-                quotation: parts[1].trim().replace(/[^0-9]/g, '') // Prende solo i numeri
+                quotation: parts[1].trim().replace(/[^0-9]/g, '') 
             });
         }
     });
@@ -37,15 +38,17 @@ const processBulk = () => {
         return;
     }
     
-    // Spediamo i dati
-    bulkForm.data = updateData;
+    // Assegniamo la lista al campo corretto
+    bulkForm.players_list = updateData;
+
+    // Invio al server
     bulkForm.post(route('admin.players.mass-update'), {
         preserveScroll: true,
         onSuccess: () => {
             bulkText.value = '';
-            alert("✅ Tutte le quotazioni trovate sono state aggiornate!");
+            alert("✅ Quotazioni aggiornate!");
         },
-        onError: () => alert("❌ Errore nel server durante l'aggiornamento.")
+        onError: () => alert("❌ Errore durante l'invio.")
     });
 };
 
@@ -56,7 +59,8 @@ const deletePlayer = (p) => {
 };
 
 const search = ref('');
-const filteredPlayers = computed(() => props.players.filter(p => p.name.toLowerCase().includes(search.value.toLowerCase())));
+const filteredPlayers = computed(() => props.players.filter(p => p.name.toLowerCase().includes(searchQuery.value.toLowerCase())));
+const searchQuery = computed(() => search.value); // Per sicurezza reattività
 </script>
 
 <template>
@@ -82,13 +86,10 @@ const filteredPlayers = computed(() => props.players.filter(p => p.name.toLowerC
                     </form>
                 </div>
 
-                <!-- AGGIORNAMENTO MASSIVO QUOTAZIONI -->
+                <!-- AGGIORNAMENTO MASSIVO -->
                 <div class="bg-white p-6 shadow rounded-xl border-t-4 border-green-600">
                     <h3 class="font-black uppercase text-xs mb-2 text-gray-400">Aggiorna Quotazioni (Incolla da Excel)</h3>
-                    <p class="text-[9px] text-gray-400 uppercase mb-4 italic leading-tight">
-                        Copia due colonne (Nome e Quotazione) e incollale qui.<br>
-                        Il formato deve essere: Nome,Valore
-                    </p>
+                    <p class="text-[9px] text-gray-400 uppercase mb-4 italic leading-tight">Formato: Nome,Valore</p>
                     <textarea 
                         v-model="bulkText" 
                         rows="5" 
@@ -98,9 +99,9 @@ const filteredPlayers = computed(() => props.players.filter(p => p.name.toLowerC
                     <button 
                         @click="processBulk" 
                         :disabled="bulkForm.processing"
-                        class="mt-4 w-full bg-green-600 text-white py-3 rounded-lg font-black uppercase text-xs shadow-md hover:bg-green-700 transition"
+                        class="mt-4 w-full bg-green-600 text-white py-3 rounded-lg font-black uppercase text-xs shadow-md"
                     >
-                        {{ bulkForm.processing ? 'Aggiornamento in corso...' : 'Aggiorna Tutto' }}
+                        {{ bulkForm.processing ? 'Sincronizzazione...' : 'Aggiorna Tutto' }}
                     </button>
                 </div>
             </div>
@@ -109,7 +110,6 @@ const filteredPlayers = computed(() => props.players.filter(p => p.name.toLowerC
             <div class="bg-white shadow rounded-xl overflow-hidden border">
                 <div class="p-4 bg-gray-50 border-b flex justify-between items-center">
                     <input v-model="search" type="text" placeholder="Cerca nel listone..." class="w-full max-w-sm rounded-lg border-gray-300 text-sm">
-                    <span class="text-[10px] font-black text-gray-400 uppercase">Totale: {{ players.length }}</span>
                 </div>
                 <table class="w-full text-left">
                     <thead>
@@ -126,7 +126,6 @@ const filteredPlayers = computed(() => props.players.filter(p => p.name.toLowerC
                             <td class="p-4 font-black uppercase text-sm text-gray-800">{{ p.name }}</td>
                             <td class="p-4 text-center">
                                 <span class="font-mono font-black text-green-600 text-lg">{{ p.quotation }}</span>
-                                <span class="text-[10px] text-gray-400 ml-1">cr</span>
                             </td>
                             <td class="p-4 text-right">
                                 <button @click="deletePlayer(p)" class="text-red-500 font-bold uppercase text-[10px]">Elimina</button>

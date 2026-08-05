@@ -55,17 +55,26 @@ class PlayerController extends Controller
     // AGGIORNAMENTO MASSIVO QUOTAZIONI
     public function massUpdateQuotations(Request $request)
     {
-        $data = $request->input('data');
-        if (!is_array($data)) return back();
+        // Cambiato il nome della chiave da 'data' a 'players_list' per evitare conflitti
+        $list = $request->input('players_list');
 
-        foreach ($data as $item) {
+        if (!is_array($list)) {
+            return back()->withErrors(['error' => 'Formato lista non valido.']);
+        }
+
+        foreach ($list as $item) {
             $cleanName = trim($item['name']);
-            $player = RealPlayer::where('name', 'LIKE', $cleanName)->first();
+            // Cerchiamo il giocatore
+            $player = \App\Models\RealPlayer::where('name', 'LIKE', $cleanName)->first();
+            
             if ($player) {
-                $player->update(['quotation' => (int)$item['quotation']]);
+                $player->update([
+                    'quotation' => (int)$item['quotation']
+                ]);
             }
         }
-        return back();
+
+        return back()->with('message', 'Quotazioni aggiornate con successo!');
     }
 
     // ELIMINA GIOCATORE
