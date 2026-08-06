@@ -6,6 +6,7 @@ use App\Models\RealPlayer;
 use App\Models\Roster;
 use App\Models\Auction;
 use App\Models\LineupDetail;
+use App\Models\PrimaveraRoster;
 use App\Models\Autobid;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
