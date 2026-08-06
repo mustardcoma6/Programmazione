@@ -58,18 +58,23 @@ class MarketController extends Controller
         $participant = LeagueParticipant::where('user_id', $user->id)->first();
         if (!$participant) return redirect()->route('dashboard');
         $league = League::find($participant->league_id);
-        $this->processExpiredAuctions($league->id);
-        $now = Carbon::now('Europe/Rome');
-        $currentSession = MarketSession::where('league_id', $league->id)->where('start_at', '<=', $now)->where('end_at', '>=', $now)->first();
         
-        // Sincronizzazione: Escludiamo i venduti in Prima Squadra, in Primavera e le aste in corso
+        $this->processExpiredAuctions($league->id);
+
+        $now = Carbon::now('Europe/Rome');
+        $currentSession = MarketSession::where('league_id', $league->id)
+            ->where('start_at', '<=', $now)
+            ->where('end_at', '>=', $now)
+            ->first();
+
+        // ESCLUSIONE TOTALE: Pro + Primavera + Aste in corso
         $soldIds = Roster::where('league_id', $league->id)->pluck('real_player_id')->toArray();
-        $primaveraIds = PrimaveraRoster::where('league_id', $league->id)->pluck('real_player_id')->toArray();
+        $primaIds = PrimaveraRoster::where('league_id', $league->id)->pluck('real_player_id')->toArray();
         $auctionedIds = Auction::where('league_id', $league->id)->where('is_finished', false)->pluck('real_player_id')->toArray();
         
-        $excludedTotal = array_merge($soldIds, $primaveraIds, $auctionedIds);
+        $excluded = array_unique(array_merge($soldIds, $primaIds, $auctionedIds));
 
-        $availablePlayers = RealPlayer::whereNotIn('id', $excludedTotal)->orderBy('role', 'desc')->get();
+        $availablePlayers = RealPlayer::whereNotIn('id', $excluded)->orderBy('role', 'desc')->get();
         $myRoster = Roster::where('league_id', $league->id)->where('user_id', $user->id)->with('player')->get();
         $frozenCredits = Auction::where('league_id', $league->id)->where('user_id', $user->id)->where('is_finished', false)->sum('current_bid') ?? 0;
 
