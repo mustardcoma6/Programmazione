@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\{LeagueParticipant, Roster, PrimaveraRoster};
+use App\Models\{LeagueParticipant, Roster, PrimaveraRoster, League};
 use Inertia\Inertia;
 
 class TeamController extends Controller
@@ -16,17 +16,26 @@ class TeamController extends Controller
         $teams = LeagueParticipant::where('league_id', $league->id)->with('user')->orderBy('team_name', 'asc')->get();
 
         foreach ($teams as $team) {
-            // Prima Squadra
+            // Prima Squadra - Corretto con sintassi function standard
             $pros = Roster::where('league_id', $league->id)->where('user_id', $team->user_id)->with('player')->get()
-                ->map(fn($p) => { $p->is_primavera = false; return $p; });
+                ->map(function($p) { 
+                    $p->is_primavera = false; 
+                    return $p; 
+                });
             
-            // Primavera
+            // Primavera - Corretto con sintassi function standard
             $juniors = PrimaveraRoster::where('league_id', $league->id)->where('user_id', $team->user_id)->with('player')->get()
-                ->map(fn($p) => { $p->is_primavera = true; return $p; });
+                ->map(function($p) { 
+                    $p->is_primavera = true; 
+                    return $p; 
+                });
 
             // Unione e Ordinamento Ruolo (P,D,C,A)
             $team->players = $pros->concat($juniors)->sortBy([
-                fn ($a, $b) => array_search($a->player->role, ['P', 'D', 'C', 'A']) <=> array_search($b->player->role, ['P', 'D', 'C', 'A']),
+                function ($a, $b) {
+                    $order = ['P' => 1, 'D' => 2, 'C' => 3, 'A' => 4];
+                    return $order[$a->player->role] <=> $order[$b->player->role];
+                },
                 ['player.name', 'asc']
             ])->values()->all();
         }
