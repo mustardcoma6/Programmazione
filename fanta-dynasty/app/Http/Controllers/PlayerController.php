@@ -22,11 +22,17 @@ class PlayerController extends Controller
         $league = auth()->user()->leagues()->first();
         if (!$league) return redirect()->route('dashboard');
 
-        // Prendiamo gli ID dei calciatori già venduti in questa lega
+        // 1. Prendiamo gli ID dei venduti in Prima Squadra
         $soldIds = Roster::where('league_id', $league->id)->pluck('real_player_id')->toArray();
+        
+        // 2. Prendiamo gli ID dei venduti in Primavera (IL PEZZO MANCANTE)
+        $primaveraIds = PrimaveraRoster::where('league_id', $league->id)->pluck('real_player_id')->toArray();
 
-        // Filtriamo il listone escludendo i venduti
-        $available = RealPlayer::whereNotIn('id', $soldIds)
+        // Uniamo le liste degli occupati
+        $excludedIds = array_merge($soldIds, $primaveraIds);
+
+        // Mostriamo solo chi NON è in nessuna delle due liste
+        $available = RealPlayer::whereNotIn('id', $excludedIds)
             ->orderByRaw("FIELD(role, 'P', 'D', 'C', 'A')")
             ->orderBy('name', 'asc')
             ->get();

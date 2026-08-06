@@ -53,29 +53,25 @@ class MarketController extends Controller
     }
 
     // --- 2. SEZIONE CALCIOMERCATO ---
-    public function auctions() 
-    {
+    public function auctions() {
         $user = auth()->user();
         $participant = LeagueParticipant::where('user_id', $user->id)->first();
         if (!$participant) return redirect()->route('dashboard');
         $league = League::find($participant->league_id);
-        
         $this->processExpiredAuctions($league->id);
         $now = Carbon::now('Europe/Rome');
+        $currentSession = MarketSession::where('league_id', $league->id)->where('start_at', '<=', $now)->where('end_at', '>=', $now)->first();
         
-        $currentSession = MarketSession::where('league_id', $league->id)
-            ->where('start_at', '<=', $now)
-            ->where('end_at', '>=', $now)
-            ->first();
-
-        $myRoster = Roster::where('league_id', $league->id)->where('user_id', $user->id)->with('player')->get();
-        $frozenCredits = Auction::where('league_id', $league->id)->where('user_id', $user->id)->where('is_finished', false)->sum('current_bid') ?? 0;
-        
+        // Sincronizzazione: Escludiamo i venduti in Prima Squadra, in Primavera e le aste in corso
         $soldIds = Roster::where('league_id', $league->id)->pluck('real_player_id')->toArray();
         $primaveraIds = PrimaveraRoster::where('league_id', $league->id)->pluck('real_player_id')->toArray();
         $auctionedIds = Auction::where('league_id', $league->id)->where('is_finished', false)->pluck('real_player_id')->toArray();
         
-        $availablePlayers = RealPlayer::whereNotIn('id', array_merge($soldIds, $primaveraIds, $auctionedIds))->orderBy('role', 'desc')->get();
+        $excludedTotal = array_merge($soldIds, $primaveraIds, $auctionedIds);
+
+        $availablePlayers = RealPlayer::whereNotIn('id', $excludedTotal)->orderBy('role', 'desc')->get();
+        $myRoster = Roster::where('league_id', $league->id)->where('user_id', $user->id)->with('player')->get();
+        $frozenCredits = Auction::where('league_id', $league->id)->where('user_id', $user->id)->where('is_finished', false)->sum('current_bid') ?? 0;
 
         return Inertia::render('Market/Auctions', [
             'league' => $league,
@@ -85,10 +81,7 @@ class MarketController extends Controller
             'frozenCredits' => (int)$frozenCredits,
             'myRoster' => $myRoster,
             'availablePlayers' => $availablePlayers,
-            'activeAuctions' => Auction::where('league_id', $league->id)
-                                ->where('is_finished', false)
-                                ->with(['player', 'user'])
-                                ->get()
+            'activeAuctions' => Auction::where('league_id', $league->id)->where('is_finished', false)->with(['player', 'user'])->get()
         ]);
     }
 
