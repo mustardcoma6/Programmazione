@@ -15,9 +15,24 @@ class MarketController extends Controller
         $user = auth()->user();
         $participant = LeagueParticipant::where('user_id', $user->id)->first();
         if (!$participant) return redirect()->route('dashboard');
+
+        // RECUPERIAMO I GIOCATORI ORDINATI PER RUOLO (P,D,C,A) E NOME
+        $myPlayers = Roster::where('league_id', $participant->league_id)
+            ->where('user_id', $user->id)
+            ->join('real_players', 'rosters.real_player_id', '=', 'real_players.id')
+            ->select('rosters.*') // Selezioniamo solo le colonne del roster per evitare conflitti
+            ->with('player')
+            ->orderByRaw("FIELD(real_players.role, 'P', 'D', 'C', 'A')")
+            ->orderBy('real_players.name', 'asc')
+            ->get();
+
+        // CALCOLIAMO IL VALORE TOTALE DELLA ROSA (Somma prezzi acquisto)
+        $rosterValue = $myPlayers->sum('purchase_price');
+
         return Inertia::render('Roster/Index', [
             'myData' => $participant,
-            'myPlayers' => Roster::where('league_id', $participant->league_id)->where('user_id', $user->id)->with('player')->get()
+            'myPlayers' => $myPlayers,
+            'rosterValue' => (int)$rosterValue // Passiamo il nuovo dato alla pagina
         ]);
     }
 
