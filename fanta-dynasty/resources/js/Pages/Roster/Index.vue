@@ -105,30 +105,25 @@ const saveContract = (item) => {
                             </tr>
                         </thead>
                         <tbody>
-                            <tr v-for="item in myPlayers" :key="item.id" class="border-b hover:bg-gray-50 transition">
-                                <td class="p-4 uppercase text-sm font-black text-gray-800">
-                                    <span class="mr-2" :class="getRoleClass(item.player.role)">{{ item.player.role }}</span> 
-                                    {{ item.player.name }}
-                                </td>
-                                <td class="p-4 text-center">
-                                    <div v-if="addedYears[item.id] > 0"><input type="number" v-model="addedClausola[item.id]" class="w-16 p-1 text-center border-orange-300 rounded text-xs" placeholder="+ cr"></div>
-                                    <span v-else-if="item.release_clause > 0" class="font-mono font-black text-orange-500">{{ item.release_clause }} cr</span>
-                                    <span v-else class="text-gray-400 text-[10px]">NO</span>
-                                </td>
-                                <td class="p-4 text-center font-mono font-bold text-gray-400">{{ item.contract_years }}</td>
-                                <td class="p-4 text-center font-mono font-bold text-xs text-gray-600">{{ getExpirationDate(item.contract_years, addedYears[item.id]) }}</td>
-                                <td class="p-4">
-                                    <div class="flex flex-col items-center gap-2">
-                                        <div class="flex items-center bg-gray-50 border rounded-lg overflow-hidden">
-                                            <button @click="changeAdded(item.id, -1)" :disabled="addedYears[item.id] === 0" class="px-2 text-red-600">-</button>
-                                            <span class="px-3 font-black text-blue-600">+{{ addedYears[item.id] }}</span>
-                                            <button @click="changeAdded(item.id, 1)" class="px-2 text-green-600">+</button>
-                                        </div>
-                                        <button v-if="addedYears[item.id] > 0" @click="saveContract(item)" class="text-[9px] bg-green-600 text-white px-3 py-1 rounded-full font-black uppercase shadow">Salva</button>
-                                    </div>
-                                </td>
-                                <td class="p-4 text-center font-mono text-gray-400 text-xs">{{ item.purchase_price }} cr</td>
-                            </tr>
+                            <tr v-for="item in myPlayers" :key="item.id" class="border-b transition" 
+    :class="item.is_primavera ? 'bg-violet-50 hover:bg-violet-100' : 'hover:bg-gray-50'">
+    
+    <td class="p-4 uppercase text-sm font-black text-gray-800">
+        <span class="mr-2" :class="getRoleClass(item.player.role)">{{ item.player.role }}</span> 
+        {{ item.player.name }}
+        <span v-if="item.is_primavera" class="ml-2 text-[8px] bg-violet-600 text-white px-1 rounded">PRIMAVERA</span>
+    </td>
+
+    <!-- Mostra anni e rinnovo SOLO se non è primavera -->
+    <template v-if="!item.is_primavera">
+        <!-- ... (qui i td della clausola, anni, scadenza e rinnova che hai già) ... -->
+    </template>
+    <template v-else>
+        <td colspan="4" class="text-center text-[10px] font-bold text-violet-400 uppercase tracking-widest">Contratto Primavera (Senza Scadenza)</td>
+    </template>
+
+    <td class="p-4 text-center font-mono text-gray-400 text-xs">{{ item.purchase_price }} cr</td>
+</tr>
                         </tbody>
                     </table>
                 </div>

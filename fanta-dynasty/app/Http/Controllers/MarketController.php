@@ -11,28 +11,44 @@ use Illuminate\Support\Facades\DB;
 class MarketController extends Controller
 {
     // --- SEZIONE SOCIETÀ: LA MIA ROSA ---
+    {
     public function myRosterPage() {
         $user = auth()->user();
         $participant = LeagueParticipant::where('user_id', $user->id)->first();
         if (!$participant) return redirect()->route('dashboard');
 
-        // RECUPERIAMO I GIOCATORI ORDINATI PER RUOLO (P,D,C,A) E NOME
-        $myPlayers = Roster::where('league_id', $participant->league_id)
+        // 1. Prendiamo i giocatori della Prima Squadra
+        $proPlayers = Roster::where('league_id', $participant->league_id)
             ->where('user_id', $user->id)
-            ->join('real_players', 'rosters.real_player_id', '=', 'real_players.id')
-            ->select('rosters.*') // Selezioniamo solo le colonne del roster per evitare conflitti
             ->with('player')
-            ->orderByRaw("FIELD(real_players.role, 'P', 'D', 'C', 'A')")
-            ->orderBy('real_players.name', 'asc')
-            ->get();
+            ->get()
+            ->map(function($item) {
+                $item->is_primavera = false;
+                return $item;
+            });
 
-        // CALCOLIAMO IL VALORE TOTALE DELLA ROSA (Somma prezzi acquisto)
-        $rosterValue = $myPlayers->sum('purchase_price');
+        // 2. Prendiamo i giocatori della Primavera
+        $primaveraPlayers = PrimaveraRoster::where('league_id', $participant->league_id)
+            ->where('user_id', $user->id)
+            ->with('player')
+            ->get()
+            ->map(function($item) {
+                $item->is_primavera = true;
+                return $item;
+            });
+
+        // 3. Fondiamo le liste e ordiniamo per Ruolo (P,D,C,A) e poi Nome
+        $mergedRoster = $proPlayers->concat($primaveraPlayers)->sortBy([
+            fn ($a, $b) => array_search($a->player->role, ['P', 'D', 'C', 'A']) <=> array_search($b->player->role, ['P', 'D', 'C', 'A']),
+            ['player.name', 'asc']
+        ])->values()->all();
+
+        $rosterValue = $proPlayers->sum('purchase_price') + $primaveraPlayers->sum('purchase_price');
 
         return Inertia::render('Roster/Index', [
             'myData' => $participant,
-            'myPlayers' => $myPlayers,
-            'rosterValue' => (int)$rosterValue // Passiamo il nuovo dato alla pagina
+            'myPlayers' => $mergedRoster,
+            'rosterValue' => (int)$rosterValue
         ]);
     }
 

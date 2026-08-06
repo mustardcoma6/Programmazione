@@ -93,17 +93,19 @@ const getBadgeRole = (role) => {
                     </div>
                     <div v-else class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
                         <div v-for="p in team.players" :key="p.id" 
-                             class="p-3 border-2 rounded-2xl shadow-sm flex flex-col items-center justify-center text-center transition hover:scale-105"
-                             :class="getRoleStyle(p.role)">
-                            <span class="text-[10px] font-black text-white px-2 py-0.5 rounded-full mb-1 shadow-sm" :class="getBadgeRole(p.role)">
-                                {{ p.role }}
-                            </span>
-                            <span class="font-black uppercase text-[11px] leading-tight mb-1">{{ p.name }}</span>
-                            <div class="flex justify-between w-full mt-2 px-1 border-t border-black/5 pt-1">
-                                <span class="text-[8px] font-bold opacity-50 uppercase">{{ p.real_team }}</span>
-                                <span class="text-[9px] font-black font-mono">{{ p.purchase_price }} cr</span>
-                            </div>
-                        </div>
+     class="p-3 border-2 rounded-2xl shadow-sm flex flex-col items-center justify-center text-center transition hover:scale-105"
+     :class="p.is_primavera ? 'bg-violet-100 border-violet-400 text-violet-900' : getRoleStyle(p.player.role)">
+    
+    <span class="text-[10px] font-black text-white px-2 py-0.5 rounded-full mb-1 shadow-sm" :class="getBadgeRole(p.player.role)">
+        {{ p.player.role }}
+    </span>
+    <span class="font-black uppercase text-[11px] leading-tight mb-1">{{ p.player.name }}</span>
+    
+    <div class="flex justify-between w-full mt-2 px-1 border-t border-black/5 pt-1">
+        <span class="text-[8px] font-bold opacity-50 uppercase">{{ p.is_primavera ? 'VIVAIO' : p.player.real_team }}</span>
+        <span class="text-[9px] font-black font-mono">{{ p.purchase_price }} cr</span>
+    </div>
+</div>
                     </div>
                 </div>
             </div>
