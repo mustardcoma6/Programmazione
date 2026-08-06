@@ -10,14 +10,14 @@ use Illuminate\Support\Facades\DB;
 
 class MarketController extends Controller
 {
-    // --- SEZIONE SOCIETÀ: LA MIA ROSA ---
+    // --- 1. PAGINA ROSA (Unione Pro + Primavera) ---
+    public function myRosterPage() 
     {
-    public function myRosterPage() {
         $user = auth()->user();
         $participant = LeagueParticipant::where('user_id', $user->id)->first();
         if (!$participant) return redirect()->route('dashboard');
 
-        // 1. Prendiamo i giocatori della Prima Squadra
+        // Prendiamo i giocatori della Prima Squadra
         $proPlayers = Roster::where('league_id', $participant->league_id)
             ->where('user_id', $user->id)
             ->with('player')
@@ -27,7 +27,7 @@ class MarketController extends Controller
                 return $item;
             });
 
-        // 2. Prendiamo i giocatori della Primavera
+        // Prendiamo i giocatori della Primavera
         $primaveraPlayers = PrimaveraRoster::where('league_id', $participant->league_id)
             ->where('user_id', $user->id)
             ->with('player')
@@ -37,7 +37,7 @@ class MarketController extends Controller
                 return $item;
             });
 
-        // 3. Fondiamo le liste e ordiniamo per Ruolo (P,D,C,A) e poi Nome
+        // Fondiamo le liste e ordiniamo per Ruolo (P,D,C,A) e poi Nome
         $mergedRoster = $proPlayers->concat($primaveraPlayers)->sortBy([
             fn ($a, $b) => array_search($a->player->role, ['P', 'D', 'C', 'A']) <=> array_search($b->player->role, ['P', 'D', 'C', 'A']),
             ['player.name', 'asc']
@@ -49,32 +49,6 @@ class MarketController extends Controller
             'myData' => $participant,
             'myPlayers' => $mergedRoster,
             'rosterValue' => (int)$rosterValue
-        ]);
-    }
-
-    // --- SEZIONE SOCIETÀ: FINANZE ---
-    public function financesPage() {
-        $user = auth()->user();
-        $participant = LeagueParticipant::where('user_id', $user->id)->first();
-        if (!$participant) return redirect()->route('dashboard');
-        return Inertia::render('Societa/Finances', ['myData' => $participant]);
-    }
-
-    // --- SEZIONE SOCIETÀ: PRIMAVERA ---
-    public function primaveraPage() {
-        $user = auth()->user();
-        $participant = LeagueParticipant::where('user_id', $user->id)->first();
-        if (!$participant) return redirect()->route('dashboard');
-
-        // Recuperiamo i calciatori assegnati alla Primavera di questo utente
-        $primaveraPlayers = PrimaveraRoster::where('league_id', $participant->league_id)
-            ->where('user_id', $user->id)
-            ->with('player')
-            ->get();
-
-        return Inertia::render('Societa/Primavera', [
-            'myData' => $participant,
-            'primaveraPlayers' => $primaveraPlayers 
         ]);
     }
 
