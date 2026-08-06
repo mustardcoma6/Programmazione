@@ -8,7 +8,7 @@ Route::get('/', function () { return Inertia::render('Welcome'); });
 
 Route::middleware(['auth'])->group(function () {
     
-    // HOME (DASHBOARD) AGGIORNATA
+    // HOME (DASHBOARD) - LOGICA RANKING CORRETTA
     Route::get('/dashboard', function () {
         $user = auth()->user();
         $leagues = $user->leagues()->get(); 
@@ -23,13 +23,23 @@ Route::middleware(['auth'])->group(function () {
             $currentLineup = \App\Models\Lineup::where('league_id', $firstLeague->id)->where('user_id', $user->id)->where('matchday', 1)->with('details.player')->first();
             $allParticipants = \App\Models\LeagueParticipant::where('league_id', $firstLeague->id)->orderBy('remaining_budget', 'desc')->get();
             $isMarketOpen = \App\Models\MarketSession::where('league_id', $firstLeague->id)->where('start_at', '<=', now())->where('end_at', '>=', now())->exists();
-// --- LOGICA RANKING (Dati forniti dal Pres) ---
-            $pointsTable = [
+
+            // --- CLASSIFICA STATICA FORNITA DAL PRES ---
+            $ranking = [
                 'SAO PAULO' => 51, 'SANTOS' => 49, 'BOTAFOGO' => 44, 'PALMEIRAS' => 43,
                 'ATLETICO G MINEIRO' => 36, 'VASCO DE GAMA' => 30, 'CORINTHIANS' => 30,
                 'FLAMENGO' => 26, 'FLUMINENSE' => 18, 'CRUZEIRO E.C.' => 17
             ];
-            // Top Player e Ranking Crediti
+            
+            arsort($ranking); // Ordina per punti
+            $sortedTeams = array_keys($ranking);
+            
+            // Troviamo la posizione (con pulizia del nome squadra)
+            $myTeamClean = strtoupper(trim($myData->team_name));
+            $pos = array_search($myTeamClean, $sortedTeams);
+            $generalRank = ($pos !== false) ? ($pos + 1) : '-';
+
+            // Altri dati statistici
             $topSigning = \App\Models\Roster::where('user_id', $user->id)->where('league_id', $firstLeague->id)->with('player')->orderBy('purchase_price', 'desc')->first();
             $creditRank = \App\Models\LeagueParticipant::where('league_id', $firstLeague->id)->where('remaining_budget', '>', $myData->remaining_budget)->count() + 1;
 
@@ -37,7 +47,7 @@ Route::middleware(['auth'])->group(function () {
                 'topPlayer' => $topSigning ? $topSigning->player->name : 'Nessuno',
                 'topPrice' => $topSigning ? $topSigning->purchase_price : 0,
                 'rank' => $creditRank,
-                'generalRank' => $generalRank, // NUOVA POSIZIONE
+                'generalRank' => $generalRank,
                 'totalParticipants' => count($allParticipants)
             ];
         }
@@ -48,30 +58,31 @@ Route::middleware(['auth'])->group(function () {
         ]);
     })->name('dashboard');
 
-    // RANKING (LEGA)
-    Route::get('/lega/ranking', [LeagueController::class, 'rankingIndex'])->name('league.ranking');
-    // --- SOCIETÀ ---
+    // SQUADRE E SOCIETÀ
+    Route::get('/teams', [TeamController::class, 'index'])->name('teams.index');
+    Route::get('/societa', [LeagueController::class, 'societaIndex'])->name('societa.index');
     Route::get('/rosa', [MarketController::class, 'myRosterPage'])->name('roster.index');
     Route::get('/societa/formazione', function() { return redirect()->route('lineup.index'); })->name('roster.lineup');
     Route::get('/societa/finanze', [MarketController::class, 'financesPage'])->name('roster.finances');
-    Route::get('/societa/primavera', [MarketController::class, 'primaveraPage'])->name('roster.primavera'); // NUOVA
+    Route::get('/societa/primavera', [MarketController::class, 'primaveraPage'])->name('roster.primavera');
 
-    // --- LEGA ---
-    Route::get('/societa', [LeagueController::class, 'societaIndex'])->name('societa.index');
-    Route::get('/teams', [TeamController::class, 'index'])->name('teams.index');
-    Route::get('/players', [PlayerController::class, 'index'])->name('players.index');
-    Route::get('/lega/ranking', function() { return redirect()->route('societa.index'); })->name('league.ranking');
+    // LEGA
+    Route::get('/lega/ranking', [LeagueController::class, 'rankingIndex'])->name('league.ranking');
     Route::get('/lega/sala-trofei', function() { return redirect()->route('societa.index'); })->name('league.trophies');
-    // MERCATO
+    Route::get('/players', [PlayerController::class, 'index'])->name('players.index');
+
+    // CALCIOMERCATO
     Route::get('/calciomercato', [MarketController::class, 'auctions'])->name('market.auctions');
     Route::get('/admin/mercato/cronologia', [MarketController::class, 'history'])->name('market.history');
     Route::get('/admin/mercato/sessioni', [MarketController::class, 'sessions'])->name('market.sessions');
 
-    // ADMIN
+    // GESTIONE ADMIN
     Route::get('/admin/gestione-rose', [LeagueController::class, 'manageRosters'])->name('admin.rosters');
     Route::get('/admin/gestione-budget', [LeagueController::class, 'manageCredits'])->name('admin.credits');
     Route::get('/admin/gestione-listone', [PlayerController::class, 'adminIndex'])->name('admin.players');
     Route::get('/admin/gestione-finanze', [LeagueController::class, 'manageFinances'])->name('admin.finances');
+    Route::get('/admin/gestione-primavera', [LeagueController::class, 'managePrimavera'])->name('admin.primavera');
+    
     Route::post('/admin/players', [PlayerController::class, 'store'])->name('admin.players.store');
     Route::delete('/admin/players/{player}', [PlayerController::class, 'destroy'])->name('admin.players.destroy');
     Route::post('/admin/players/bulk-import', [PlayerController::class, 'bulkImport'])->name('admin.players.bulk-import');
@@ -81,9 +92,9 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/admin/assign-manual', [LeagueController::class, 'assignManualPlayer'])->name('admin.assign.manual');
     Route::post('/admin/remove-player', [LeagueController::class, 'removePlayer'])->name('admin.remove');
     Route::delete('/admin/kick-participant/{participant}', [LeagueController::class, 'kickParticipant'])->name('admin.participant.kick');
-Route::get('/admin/gestione-primavera', [LeagueController::class, 'managePrimavera'])->name('admin.primavera');
-Route::post('/admin/primavera-assign', [LeagueController::class, 'assignPrimavera'])->name('admin.primavera.assign');
-Route::post('/admin/primavera-remove', [LeagueController::class, 'removePrimavera'])->name('admin.primavera.remove');
+    Route::post('/admin/primavera-assign', [LeagueController::class, 'assignPrimavera'])->name('admin.primavera.assign');
+    Route::post('/admin/primavera-remove', [LeagueController::class, 'removePrimavera'])->name('admin.primavera.remove');
+
     // AZIONI UTENTE
     Route::post('/buy-player', [MarketController::class, 'buy'])->name('players.buy');
     Route::post('/release-player', [MarketController::class, 'release'])->name('players.release');
@@ -92,7 +103,6 @@ Route::post('/admin/primavera-remove', [LeagueController::class, 'removePrimaver
     Route::post('/lineup', [LineupController::class, 'store'])->name('lineup.store');
     Route::post('/market/sessions', [MarketController::class, 'storeSession'])->name('market.sessions.store');
     Route::post('/market/close-all/{league}', [MarketController::class, 'closeMarketNow'])->name('market.close-all');
-    Route::post('/leagues/{league}/update-market', [LeagueController::class, 'updateMarket'])->name('leagues.market.update');
 
     // PROFILO / LEGA
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
@@ -104,6 +114,7 @@ Route::post('/admin/primavera-remove', [LeagueController::class, 'removePrimaver
     Route::get('/leagues/join', [LeagueController::class, 'join'])->name('leagues.join');
     Route::post('/leagues/join', [LeagueController::class, 'joinStore'])->name('leagues.join.store');
     Route::post('/leagues/{league}/toggle-market', [LeagueController::class, 'toggleMarket'])->name('leagues.market.toggle');
+    Route::post('/leagues/{league}/update-market', [LeagueController::class, 'updateMarket'])->name('leagues.market.update');
 });
 
 require __DIR__.'/auth.php';
