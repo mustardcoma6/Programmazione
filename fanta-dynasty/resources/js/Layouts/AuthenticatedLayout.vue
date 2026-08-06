@@ -43,47 +43,47 @@ const isAdmin = computed(() => hasLeague.value && leagues.value[0]?.admin_id ===
                             </NavLink>
                             
                             <template v-if="hasLeague">
-                                <!-- TENDINA SOCIETÀ -->
+                                <!-- 1. TENDINA SOCIETÀ -->
                                 <Dropdown align="left" width="48">
                                     <template #trigger>
-                                        <button class="inline-flex items-center px-1 pt-1 text-sm font-bold uppercase text-gray-500 hover:text-gray-700 transition h-16 border-b-2 border-transparent">
-                                            Società <svg class="ms-1 h-4 w-4" fill="currentColor" viewBox="0 0 20 20"><path d="M19 9l-7 7-7-7" /></svg>
+                                        <button class="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-bold leading-5 text-gray-500 hover:text-gray-700 transition uppercase">
+                                            Società <svg class="ms-1 h-4 w-4" fill="currentColor" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" /></svg>
                                         </button>
                                     </template>
                                     <template #content>
-                                        <DropdownLink :href="route('roster.index')">La mia Rosa</DropdownLink>
-                                        <DropdownLink :href="route('teams.index')">Rose Avversarie</DropdownLink>
-                                        <DropdownLink :href="route('roster.lineup')">Formazione</DropdownLink>
-                                        <DropdownLink :href="route('roster.finances')">Finanze</DropdownLink>
-                                        <DropdownLink :href="route('roster.primavera')">Primavera</DropdownLink>
+                                        <DropdownLink :href="route('roster.index')"> La mia Rosa </DropdownLink>
+                                        <DropdownLink :href="route('roster.lineup')"> Formazione </DropdownLink>
+                                        <DropdownLink :href="route('roster.finances')"> Finanze </DropdownLink>
+                                        <DropdownLink :href="route('roster.primavera')"> Primavera </DropdownLink>
                                     </template>
                                 </Dropdown>
 
-                                <!-- TENDINA LEGA (Svincolati inseriti qui) -->
+                                <!-- 2. TENDINA LEGA -->
                                 <Dropdown align="left" width="48">
                                     <template #trigger>
-                                        <button class="inline-flex items-center px-1 pt-1 text-sm font-bold uppercase text-gray-500 hover:text-gray-700 transition h-16 border-b-2 border-transparent">
-                                            Lega <svg class="ms-1 h-4 w-4" fill="currentColor" viewBox="0 0 20 20"><path d="M19 9l-7 7-7-7" /></svg>
+                                        <button class="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-bold leading-5 text-gray-500 hover:text-gray-700 transition uppercase">
+                                            Lega <svg class="ms-1 h-4 w-4" fill="currentColor" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" /></svg>
                                         </button>
                                     </template>
                                     <template #content>
-                                        <DropdownLink :href="route('societa.index')">Anagrafe Lega</DropdownLink>
-                                        <DropdownLink :href="route('league.ranking')">Ranking</DropdownLink>
-                                        <DropdownLink :href="route('league.trophies')">Sala Trofei</DropdownLink>
-                                        <DropdownLink :href="route('players.index')">Svincolati</DropdownLink>
+                                        <DropdownLink :href="route('societa.index')"> Anagrafe Lega </DropdownLink>
+                                        <DropdownLink :href="route('teams.index')"> Rose Avversarie </DropdownLink> <!-- TORNATA QUI -->
+                                        <DropdownLink :href="route('league.ranking')"> Ranking </DropdownLink>
+                                        <DropdownLink :href="route('players.index')"> Svincolati </DropdownLink>
+                                        <DropdownLink :href="route('league.trophies')"> Sala Trofei </DropdownLink>
                                     </template>
                                 </Dropdown>
 
-                                <!-- TENDINA CALCIOMERCATO -->
+                                <!-- 3. TENDINA CALCIOMERCATO -->
                                 <Dropdown align="left" width="48">
                                     <template #trigger>
-                                        <button class="inline-flex items-center px-1 pt-1 text-sm font-bold uppercase text-gray-500 hover:text-gray-700 transition h-16 border-b-2 border-transparent">
-                                            Calciomercato <svg class="ms-1 h-4 w-4" fill="currentColor" viewBox="0 0 20 20"><path d="M19 9l-7 7-7-7" /></svg>
+                                        <button class="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-bold leading-5 text-gray-500 hover:text-gray-700 transition uppercase">
+                                            Calciomercato <svg class="ms-1 h-4 w-4" fill="currentColor" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" /></svg>
                                         </button>
                                     </template>
                                     <template #content>
-                                        <DropdownLink :href="route('market.auctions')">Aste e Scambi</DropdownLink>
-                                        <DropdownLink :href="route('market.history')">Cronologia</DropdownLink>
+                                        <DropdownLink :href="route('market.auctions')"> Aste e Scambi </DropdownLink>
+                                        <DropdownLink :href="route('market.history')"> Cronologia </DropdownLink>
                                     </template>
                                 </Dropdown>
                             </template>
