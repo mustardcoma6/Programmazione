@@ -115,6 +115,12 @@ class LeagueController extends Controller
 
     public function updateResources(Request $request)
     {
+        $request->validate([
+            'participant_id' => 'required|exists:league_participants,id',
+            'new_credits' => 'required|integer',
+            'new_years' => 'required|integer',
+            'new_primavera_credits' => 'required|integer' // Ricevuto dal modulo
+        ]);
         $p = LeagueParticipant::findOrFail($request->participant_id);
         $p->update([
             'remaining_budget' => $request->new_credits,
