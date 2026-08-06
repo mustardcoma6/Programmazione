@@ -42,7 +42,7 @@ const saveContract = (item) => {
     const finalTotalYears = item.contract_years + yearsToAdd;
     const clausolaPlus = parseInt(addedClausola.value[item.id]) || 0;
     
-    if (confirm(`Rinnovare ${item.player.name}?`)) {
+    if (confirm(`Confermi il rinnovo per ${item.player.name}?`)) {
         yearForm.roster_id = item.id;
         yearForm.new_years = finalTotalYears;
         yearForm.clausola_investment = clausolaPlus;
@@ -61,18 +61,30 @@ const saveContract = (item) => {
 <template>
     <Head title="La mia Rosa" />
     <AuthenticatedLayout>
-        <template #header><h2 class="font-black text-xl uppercase tracking-tighter text-gray-800 italic">Gestione Asset Societari</h2></template>
+        <template #header>
+            <h2 class="font-black text-xl uppercase tracking-tighter text-gray-800 italic">Gestione Asset Societari</h2>
+        </template>
         
         <div class="py-6 md:py-12 px-4">
             <div class="max-w-7xl mx-auto space-y-6">
-                <!-- BANNERS -->
+                
+                <!-- BANNERS RISORSE -->
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div class="bg-white p-6 shadow rounded-3xl border-l-8 border-blue-600 flex justify-between items-center"><span class="font-bold text-gray-400 uppercase text-[10px]">Budget Anni</span><p class="text-4xl font-black font-mono text-blue-600">{{ myData.years_budget }}</p></div>
-                    <div class="bg-white p-6 shadow rounded-3xl border-l-8 border-green-500 flex justify-between items-center"><span class="font-bold text-gray-400 uppercase text-[10px]">Crediti</span><p class="text-4xl font-black font-mono text-green-600">{{ myData.remaining_budget }}</p></div>
-                    <div class="bg-white p-6 shadow rounded-3xl border-l-8 border-yellow-500 flex justify-between items-center"><span class="font-bold text-gray-400 uppercase text-[10px]">Valore Rosa</span><p class="text-4xl font-black font-mono text-yellow-500">{{ rosterValue }}</p></div>
+                    <div class="bg-white p-6 shadow-lg rounded-3xl border-l-8 border-blue-600 flex justify-between items-center">
+                        <span class="font-bold text-gray-400 uppercase text-[10px]">Budget Anni</span>
+                        <p class="text-4xl font-black font-mono text-blue-600">{{ myData.years_budget }}</p>
+                    </div>
+                    <div class="bg-white p-6 shadow-lg rounded-3xl border-l-8 border-green-500 flex justify-between items-center">
+                        <span class="font-bold text-gray-400 uppercase text-[10px]">Crediti</span>
+                        <p class="text-4xl font-black font-mono text-green-600">{{ myData.remaining_budget }}</p>
+                    </div>
+                    <div class="bg-white p-6 shadow-lg rounded-3xl border-l-8 border-yellow-500 flex justify-between items-center">
+                        <span class="font-bold text-gray-400 uppercase text-[10px]">Valore Rosa</span>
+                        <p class="text-4xl font-black font-mono text-yellow-500">{{ rosterValue }}</p>
+                    </div>
                 </div>
 
-                <!-- 1. VERSIONE DESKTOP -->
+                <!-- 1. VERSIONE DESKTOP (TABELLA) -->
                 <div class="hidden md:block bg-white shadow-xl rounded-3xl overflow-hidden border">
                     <table class="w-full text-left">
                         <thead>
@@ -92,7 +104,6 @@ const saveContract = (item) => {
                                     {{ item.player.name }}
                                     <span v-if="item.is_primavera" class="ml-2 text-[8px] bg-violet-600 text-white px-1 rounded">PRIMAVERA</span>
                                 </td>
-                                
                                 <td class="p-4 text-center">
                                     <template v-if="!item.is_primavera">
                                         <div v-if="addedYears[item.id] > 0"><input type="number" v-model="addedClausola[item.id]" class="w-16 p-1 text-center border-orange-300 rounded text-xs" placeholder="+ cr"></div>
@@ -101,7 +112,6 @@ const saveContract = (item) => {
                                     </template>
                                     <span v-else class="text-[9px] text-violet-400 font-bold uppercase tracking-widest">Contratto Vivaio</span>
                                 </td>
-
                                 <td class="p-4 text-center font-mono font-bold text-gray-400">{{ item.is_primavera ? '-' : item.contract_years }}</td>
                                 <td class="p-4 text-center font-mono font-bold text-xs text-gray-600">{{ item.is_primavera ? 'Indeterminata' : getExpirationDate(item.contract_years, addedYears[item.id]) }}</td>
                                 <td class="p-4">
@@ -117,54 +127,51 @@ const saveContract = (item) => {
                     </table>
                 </div>
 
-                <!-- 2. VERSIONE MOBILE -->
-                <div class="md:hidden space-y-4">
-                    <div v-for="item in myPlayers" :key="item.id" class="rounded-3xl shadow-md border overflow-hidden" :class="item.is_primavera ? 'bg-violet-50 border-violet-200' : 'bg-white border-gray-100'">
-                        <div class="p-4 border-b flex justify-between items-center" :class="item.is_primavera ? 'bg-violet-100' : 'bg-gray-50'">
-                            <div class="flex items-center gap-2">
-                                <span class="font-black px-2 py-0.5 rounded-lg text-xs" :class="getRoleClass(item.player.role)">{{ item.player.role }}</span>
-                                <span class="font-black uppercase text-gray-900">{{ item.player.name }}</span>
+                <!-- 2. VERSIONE MOBILE (GROSSA E COMPATTA) -->
+                <div class="md:hidden space-y-6">
+                    <div v-for="item in myPlayers" :key="item.id" class="rounded-3xl shadow-xl border-l-[10px] overflow-hidden bg-white" :class="item.is_primavera ? 'border-violet-500' : 'border-blue-600'">
+                        <div class="p-5 bg-gray-50 border-b flex justify-between items-center">
+                            <div class="flex items-center gap-3">
+                                <span class="font-black px-3 py-1 rounded-xl text-sm shadow-sm" :class="getRoleClass(item.player.role)">{{ item.player.role }}</span>
+                                <span class="font-black uppercase text-lg text-gray-900 tracking-tighter">{{ item.player.name }}</span>
                             </div>
-                            <span v-if="item.is_primavera" class="text-[8px] bg-violet-600 text-white px-2 py-0.5 rounded-full font-black uppercase">Primavera</span>
+                            <span v-if="item.is_primavera" class="text-[8px] bg-violet-600 text-white px-2 py-1 rounded-full font-black uppercase">Primavera</span>
                         </div>
                         
-                        <div class="p-4 grid grid-cols-2 gap-4">
-                            <!-- Colonna Info -->
-                            <div class="space-y-2">
-                                <div>
-                                    <p class="text-[9px] font-bold text-gray-400 uppercase">Anni & Scadenza</p>
-                                    <p class="text-sm font-black text-gray-700">{{ item.is_primavera ? 'Contratto Vivaio' : item.contract_years + ' Anni' }}</p>
-                                    <p class="text-[10px] font-mono font-bold" :class="addedYears[item.id] > 0 ? 'text-blue-600' : 'text-gray-500'">
+                        <div class="p-5 space-y-4">
+                            <div class="flex justify-between items-start">
+                                <div class="space-y-1">
+                                    <p class="text-[9px] font-black text-gray-400 uppercase tracking-widest">Contratto attuale</p>
+                                    <p class="text-xl font-black text-gray-800">{{ item.is_primavera ? 'VIVAIO' : item.contract_years + ' ANNI' }}</p>
+                                    <p class="text-xs font-mono font-bold" :class="addedYears[item.id] > 0 ? 'text-blue-600 animate-pulse' : 'text-gray-500'">
                                         {{ item.is_primavera ? 'Senza Scadenza' : getExpirationDate(item.contract_years, addedYears[item.id]) }}
                                     </p>
-                                    <p v-if="addedYears[item.id] > 0" class="text-[7px] font-black text-blue-400 uppercase">Anteprima Data</p>
+                                    <p v-if="addedYears[item.id] > 0" class="text-[8px] font-black text-blue-400 uppercase">Anteprima Scadenza</p>
+                                    <p class="mt-2 text-xs font-bold text-orange-500 uppercase">Clausola: {{ item.release_clause > 0 ? item.release_clause + ' cr' : 'Nessuna' }}</p>
                                 </div>
-                                <div>
-                                    <p class="text-[9px] font-bold text-orange-400 uppercase">Clausola</p>
-                                    <p class="text-xs font-black text-gray-700">{{ item.release_clause > 0 ? item.release_clause + ' cr' : 'No' }}</p>
+
+                                <div v-if="!item.is_primavera" class="bg-blue-50 border border-blue-100 rounded-3xl p-4 flex flex-col items-center gap-3 shadow-inner">
+                                    <p class="text-[10px] font-black text-blue-600 uppercase">Rinnova</p>
+                                    <div class="flex items-center bg-white rounded-2xl shadow-sm border border-blue-200 overflow-hidden">
+                                        <button @click="changeAdded(item.id, -1)" :disabled="addedYears[item.id] === 0" class="px-5 py-2 text-red-600 font-black text-xl">-</button>
+                                        <span class="px-2 font-black text-blue-700 text-xl">+{{ addedYears[item.id] }}</span>
+                                        <button @click="changeAdded(item.id, 1)" class="px-5 py-2 text-green-600 font-black text-xl">+</button>
+                                    </div>
                                 </div>
                             </div>
 
-                            <!-- Colonna Azione -->
-                            <div v-if="!item.is_primavera" class="flex flex-col items-center bg-blue-50/50 rounded-2xl p-3 border border-blue-100">
-                                <div class="flex items-center bg-white border border-blue-200 rounded-xl shadow-sm overflow-hidden mb-3">
-                                    <button @click="changeAdded(item.id, -1)" :disabled="addedYears[item.id] === 0" class="px-4 py-1 text-red-600 font-black text-lg">-</button>
-                                    <span class="px-3 font-black text-blue-700">+{{ addedYears[item.id] }}</span>
-                                    <button @click="changeAdded(item.id, 1)" class="px-4 py-1 text-green-600 font-black text-lg">+</button>
+                            <div v-if="!item.is_primavera && addedYears[item.id] > 0" class="bg-orange-50 border border-orange-100 rounded-3xl p-4 space-y-3">
+                                <div>
+                                    <label class="block text-[10px] font-black text-orange-600 uppercase text-center mb-2">Investimento Clausola (Crediti)</label>
+                                    <input type="number" v-model="addedClausola[item.id]" class="w-full text-center text-lg font-black font-mono border-orange-200 rounded-xl focus:ring-orange-500" placeholder="0">
+                                    <p class="text-[9px] text-center text-orange-400 font-bold uppercase mt-2">Nuova Clausola: {{ (item.release_clause > 0 ? item.release_clause : item.purchase_price) + (parseInt(addedClausola[item.id]) || 0) }} cr</p>
                                 </div>
-
-                                <!-- Input Clausola Mobile -->
-                                <div v-if="addedYears[item.id] > 0" class="w-full mb-3">
-                                    <label class="block text-[8px] font-black text-orange-500 uppercase text-center mb-1">Extra Clausola</label>
-                                    <input type="number" v-model="addedClausola[item.id]" class="w-full text-center text-xs border-orange-200 rounded-lg p-1 font-mono" placeholder="+ cr">
-                                </div>
-
-                                <button v-if="addedYears[item.id] > 0" @click="saveContract(item)" class="w-full bg-green-600 text-white py-2 rounded-xl text-[10px] font-black uppercase shadow-lg">Salva</button>
-                                <span v-else class="text-[8px] text-gray-400 uppercase font-bold">Usa + per Rinnovo</span>
+                                <button @click="saveContract(item)" class="w-full bg-green-600 text-white py-4 rounded-2xl font-black uppercase tracking-widest shadow-lg">Conferma Operazione</button>
                             </div>
                         </div>
                     </div>
                 </div>
+
             </div>
         </div>
     </AuthenticatedLayout>
