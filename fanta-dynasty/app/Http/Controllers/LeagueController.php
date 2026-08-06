@@ -181,4 +181,29 @@ class LeagueController extends Controller
     public function removePlayer(Request $request) { $rosterItem = Roster::findOrFail($request->roster_id); $p = LeagueParticipant::where('league_id', $rosterItem->league_id)->where('user_id', $rosterItem->user_id)->first(); $p->increment('remaining_budget', $rosterItem->purchase_price); $rosterItem->delete(); return back(); }
     public function kickParticipant(LeagueParticipant $p) { $league = League::find($p->league_id); if ($league->admin_id !== auth()->id()) return back(); DB::transaction(function () use ($p, $league) { Roster::where('league_id', $league->id)->where('user_id', $p->user_id)->delete(); $p->delete(); }); return back(); }
     public function assignManualPlayer(Request $request) { $league = auth()->user()->leagues()->first(); $newPlayer = RealPlayer::create(['name' => $request->name, 'role' => $request->role, 'real_team' => $request->real_team, 'initial_value' => 1]); Roster::create(['league_id' => $league->id, 'user_id' => $request->user_id, 'real_player_id' => $newPlayer->id, 'purchase_price' => $request->price, 'contract_years' => $request->years]); $p = LeagueParticipant::where('league_id', $league->id)->where('user_id', $request->user_id)->first(); if ($p) $p->decrement('remaining_budget', $request->price); return back(); }
+    public function rankingIndex()
+    {
+        $user = auth()->user();
+        $league = $user->leagues()->first();
+        if (!$league) return redirect()->route('dashboard');
+
+        // Dati statici forniti per la classifica attuale
+        $rankingData = [
+            ['name' => 'SAO PAULO', 'points' => 51],
+            ['name' => 'SANTOS', 'points' => 49],
+            ['name' => 'BOTAFOGO', 'points' => 44],
+            ['name' => 'PALMEIRAS', 'points' => 43],
+            ['name' => 'ATLETICO G MINEIRO', 'points' => 36],
+            ['name' => 'VASCO DE GAMA', 'points' => 30],
+            ['name' => 'CORINTHIANS', 'points' => 30],
+            ['name' => 'FLAMENGO', 'points' => 26],
+            ['name' => 'FLUMINENSE', 'points' => 18],
+            ['name' => 'CRUZEIRO E.C.', 'points' => 17],
+        ];
+
+        return Inertia::render('Lega/Ranking', [
+            'ranking' => $rankingData,
+            'leagueName' => $league->name
+        ]);
+    }
 }

@@ -8,9 +8,48 @@ Route::get('/', function () { return Inertia::render('Welcome'); });
 
 Route::middleware(['auth'])->group(function () {
     
-    // HOME
-    Route::get('/dashboard', [LeagueController::class, 'dashboard'])->name('dashboard');
+    // HOME (DASHBOARD) AGGIORNATA
+    Route::get('/dashboard', function () {
+        $user = auth()->user();
+        $leagues = $user->leagues()->get(); 
+        $firstLeague = $leagues->first();
+        
+        $myData = null; $myPlayers = []; $currentLineup = null; $allParticipants = []; 
+        $isMarketOpen = false; $stats = null;
 
+        if ($firstLeague) {
+            $myData = \App\Models\LeagueParticipant::where('league_id', $firstLeague->id)->where('user_id', $user->id)->first();
+            $myPlayers = \App\Models\Roster::where('league_id', $firstLeague->id)->where('user_id', $user->id)->with('player')->get();
+            $currentLineup = \App\Models\Lineup::where('league_id', $firstLeague->id)->where('user_id', $user->id)->where('matchday', 1)->with('details.player')->first();
+            $allParticipants = \App\Models\LeagueParticipant::where('league_id', $firstLeague->id)->orderBy('remaining_budget', 'desc')->get();
+            $isMarketOpen = \App\Models\MarketSession::where('league_id', $firstLeague->id)->where('start_at', '<=', now())->where('end_at', '>=', now())->exists();
+// --- LOGICA RANKING (Dati forniti dal Pres) ---
+            $pointsTable = [
+                'SAO PAULO' => 51, 'SANTOS' => 49, 'BOTAFOGO' => 44, 'PALMEIRAS' => 43,
+                'ATLETICO G MINEIRO' => 36, 'VASCO DE GAMA' => 30, 'CORINTHIANS' => 30,
+                'FLAMENGO' => 26, 'FLUMINENSE' => 18, 'CRUZEIRO E.C.' => 17
+            ];
+            // Top Player e Ranking Crediti
+            $topSigning = \App\Models\Roster::where('user_id', $user->id)->where('league_id', $firstLeague->id)->with('player')->orderBy('purchase_price', 'desc')->first();
+            $creditRank = \App\Models\LeagueParticipant::where('league_id', $firstLeague->id)->where('remaining_budget', '>', $myData->remaining_budget)->count() + 1;
+
+            $stats = [
+                'topPlayer' => $topSigning ? $topSigning->player->name : 'Nessuno',
+                'topPrice' => $topSigning ? $topSigning->purchase_price : 0,
+                'rank' => $creditRank,
+                'generalRank' => $generalRank, // NUOVA POSIZIONE
+                'totalParticipants' => count($allParticipants)
+            ];
+        }
+
+        return Inertia::render('Dashboard', [
+            'leagues' => $leagues, 'myData' => $myData, 'myPlayers' => $myPlayers, 'currentLineup' => $currentLineup, 
+            'allParticipants' => $allParticipants, 'isMarketOpen' => (bool)$isMarketOpen, 'stats' => $stats
+        ]);
+    })->name('dashboard');
+
+    // RANKING (LEGA)
+    Route::get('/lega/ranking', [LeagueController::class, 'rankingIndex'])->name('league.ranking');
     // --- SOCIETÀ ---
     Route::get('/rosa', [MarketController::class, 'myRosterPage'])->name('roster.index');
     Route::get('/societa/formazione', function() { return redirect()->route('lineup.index'); })->name('roster.lineup');
