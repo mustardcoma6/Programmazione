@@ -9,6 +9,7 @@ const props = defineProps({
     rosterValue: Number 
 });
 
+// --- LOGICA COLORI RUOLI ---
 const getRoleClass = (role) => {
     if (role === 'P') return 'role-P';
     if (role === 'D') return 'role-D';
@@ -17,6 +18,7 @@ const getRoleClass = (role) => {
     return '';
 };
 
+// --- LOGICA RINNOVO E CLAUSOLA ---
 const addedYears = ref({});
 const addedClausola = ref({}); 
 
@@ -68,7 +70,7 @@ const saveContract = (item) => {
         <div class="py-6 md:py-12 px-4">
             <div class="max-w-7xl mx-auto space-y-6">
                 
-                <!-- BANNERS RISORSE -->
+                <!-- BANNERS RISORSE (Sempre Visibili) -->
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div class="bg-white p-6 shadow-lg rounded-3xl border-l-8 border-blue-600 flex justify-between items-center">
                         <span class="font-bold text-gray-400 uppercase text-[10px]">Budget Anni</span>
@@ -84,9 +86,9 @@ const saveContract = (item) => {
                     </div>
                 </div>
 
-                <!-- 1. VERSIONE DESKTOP (TABELLA) -->
+                <!-- 1. VERSIONE DESKTOP (Tabella - Scompare su schermi piccoli) -->
                 <div class="hidden md:block bg-white shadow-xl rounded-3xl overflow-hidden border">
-                    <table class="w-full text-left">
+                    <table class="w-full text-left border-collapse">
                         <thead>
                             <tr class="bg-gray-100 text-[10px] font-black uppercase text-gray-600 border-b">
                                 <th class="p-4">Calciatore</th>
@@ -110,7 +112,7 @@ const saveContract = (item) => {
                                         <span v-else-if="item.release_clause > 0" class="font-mono font-black text-orange-500">{{ item.release_clause }} cr</span>
                                         <span v-else class="text-gray-400 text-[10px]">NO</span>
                                     </template>
-                                    <span v-else class="text-[9px] text-violet-400 font-bold uppercase tracking-widest">Contratto Vivaio</span>
+                                    <span v-else class="text-[9px] text-violet-400 font-bold uppercase tracking-widest">VIVAIO</span>
                                 </td>
                                 <td class="p-4 text-center font-mono font-bold text-gray-400">{{ item.is_primavera ? '-' : item.contract_years }}</td>
                                 <td class="p-4 text-center font-mono font-bold text-xs text-gray-600">{{ item.is_primavera ? 'Indeterminata' : getExpirationDate(item.contract_years, addedYears[item.id]) }}</td>
@@ -127,50 +129,61 @@ const saveContract = (item) => {
                     </table>
                 </div>
 
-                <!-- 2. VERSIONE MOBILE (GROSSA E COMPATTA) -->
-                <div class="md:hidden space-y-6">
-                    <div v-for="item in myPlayers" :key="item.id" class="rounded-3xl shadow-xl border-l-[10px] overflow-hidden bg-white" :class="item.is_primavera ? 'border-violet-500' : 'border-blue-600'">
-                        <div class="p-5 bg-gray-50 border-b flex justify-between items-center">
+                <!-- 2. VERSIONE MOBILE (CARD GROSSE - Compare solo su smartphone) -->
+                <div class="block md:hidden space-y-6">
+                    <div v-for="item in myPlayers" :key="item.id" class="bg-white rounded-[2rem] shadow-xl border-l-[12px] overflow-hidden" :class="item.is_primavera ? 'border-violet-500' : 'border-blue-600'">
+                        <!-- Titolo Card -->
+                        <div class="p-5 border-b bg-gray-50 flex justify-between items-center">
                             <div class="flex items-center gap-3">
-                                <span class="font-black px-3 py-1 rounded-xl text-sm shadow-sm" :class="getRoleClass(item.player.role)">{{ item.player.role }}</span>
-                                <span class="font-black uppercase text-lg text-gray-900 tracking-tighter">{{ item.player.name }}</span>
+                                <span class="font-black px-3 py-1 rounded-xl text-xs shadow-sm" :class="getRoleClass(item.player.role)">{{ item.player.role }}</span>
+                                <span class="font-black uppercase text-xl text-gray-900 tracking-tighter">{{ item.player.name }}</span>
                             </div>
-                            <span v-if="item.is_primavera" class="text-[8px] bg-violet-600 text-white px-2 py-1 rounded-full font-black uppercase">Primavera</span>
+                            <span v-if="item.is_primavera" class="text-[8px] bg-violet-600 text-white px-2 py-1 rounded-full font-black">PRIMAVERA</span>
                         </div>
-                        
-                        <div class="p-5 space-y-4">
-                            <div class="flex justify-between items-start">
+
+                        <div class="p-5 space-y-6">
+                            <!-- Dati Attuali -->
+                            <div class="flex justify-between items-end">
                                 <div class="space-y-1">
-                                    <p class="text-[9px] font-black text-gray-400 uppercase tracking-widest">Contratto attuale</p>
+                                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Contratto & Scadenza</p>
                                     <p class="text-xl font-black text-gray-800">{{ item.is_primavera ? 'VIVAIO' : item.contract_years + ' ANNI' }}</p>
-                                    <p class="text-xs font-mono font-bold" :class="addedYears[item.id] > 0 ? 'text-blue-600 animate-pulse' : 'text-gray-500'">
+                                    <p class="text-sm font-mono font-bold" :class="addedYears[item.id] > 0 ? 'text-blue-600 animate-pulse' : 'text-gray-500'">
                                         {{ item.is_primavera ? 'Senza Scadenza' : getExpirationDate(item.contract_years, addedYears[item.id]) }}
                                     </p>
-                                    <p v-if="addedYears[item.id] > 0" class="text-[8px] font-black text-blue-400 uppercase">Anteprima Scadenza</p>
-                                    <p class="mt-2 text-xs font-bold text-orange-500 uppercase">Clausola: {{ item.release_clause > 0 ? item.release_clause + ' cr' : 'Nessuna' }}</p>
+                                    <p class="text-[9px] font-bold text-orange-500 uppercase mt-2">Clausola: {{ item.release_clause > 0 ? item.release_clause + ' cr' : 'Nessuna' }}</p>
                                 </div>
-
-                                <div v-if="!item.is_primavera" class="bg-blue-50 border border-blue-100 rounded-3xl p-4 flex flex-col items-center gap-3 shadow-inner">
-                                    <p class="text-[10px] font-black text-blue-600 uppercase">Rinnova</p>
-                                    <div class="flex items-center bg-white rounded-2xl shadow-sm border border-blue-200 overflow-hidden">
-                                        <button @click="changeAdded(item.id, -1)" :disabled="addedYears[item.id] === 0" class="px-5 py-2 text-red-600 font-black text-xl">-</button>
-                                        <span class="px-2 font-black text-blue-700 text-xl">+{{ addedYears[item.id] }}</span>
-                                        <button @click="changeAdded(item.id, 1)" class="px-5 py-2 text-green-600 font-black text-xl">+</button>
-                                    </div>
+                                <div class="text-right">
+                                    <p class="text-[10px] font-bold text-gray-400 uppercase">Acquisto</p>
+                                    <p class="text-lg font-black text-gray-900 font-mono">{{ item.purchase_price }} cr</p>
                                 </div>
                             </div>
 
-                            <div v-if="!item.is_primavera && addedYears[item.id] > 0" class="bg-orange-50 border border-orange-100 rounded-3xl p-4 space-y-3">
-                                <div>
-                                    <label class="block text-[10px] font-black text-orange-600 uppercase text-center mb-2">Investimento Clausola (Crediti)</label>
-                                    <input type="number" v-model="addedClausola[item.id]" class="w-full text-center text-lg font-black font-mono border-orange-200 rounded-xl focus:ring-orange-500" placeholder="0">
-                                    <p class="text-[9px] text-center text-orange-400 font-bold uppercase mt-2">Nuova Clausola: {{ (item.release_clause > 0 ? item.release_clause : item.purchase_price) + (parseInt(addedClausola[item.id]) || 0) }} cr</p>
+                            <!-- Sezione Azioni (Solo per Pro) -->
+                            <div v-if="!item.is_primavera" class="bg-blue-50/50 rounded-[1.5rem] p-5 border border-blue-100 space-y-4">
+                                <div class="flex justify-between items-center">
+                                    <span class="text-xs font-black text-blue-600 uppercase">Rinnova Contratto</span>
+                                    <div class="flex items-center bg-white rounded-2xl shadow-sm border border-blue-200 overflow-hidden">
+                                        <button @click="changeAdded(item.id, -1)" :disabled="addedYears[item.id] === 0" class="px-6 py-2 text-red-600 font-black text-xl">-</button>
+                                        <span class="px-4 font-black text-blue-700 text-2xl font-mono">+{{ addedYears[item.id] }}</span>
+                                        <button @click="changeAdded(item.id, 1)" class="px-6 py-2 text-green-600 font-black text-xl">+</button>
+                                    </div>
                                 </div>
-                                <button @click="saveContract(item)" class="w-full bg-green-600 text-white py-4 rounded-2xl font-black uppercase tracking-widest shadow-lg">Conferma Operazione</button>
+
+                                <!-- Box Clausola Mobile -->
+                                <div v-if="addedYears[item.id] > 0" class="bg-white p-4 rounded-2xl border border-orange-200 shadow-inner">
+                                    <label class="block text-[10px] font-black text-orange-500 uppercase text-center mb-2">Aggiungi Crediti a Clausola</label>
+                                    <input type="number" v-model="addedClausola[item.id]" class="w-full text-center text-2xl font-black font-mono border-none bg-orange-50 rounded-xl focus:ring-orange-500" placeholder="0">
+                                    <p class="text-[10px] text-center text-orange-400 font-bold uppercase mt-2">Nuova Clausola: {{ (item.release_clause > 0 ? item.release_clause : item.purchase_price) + (parseInt(addedClausola[item.id]) || 0) }} cr</p>
+                                </div>
+
+                                <button v-if="addedYears[item.id] > 0" @click="saveContract(item)" class="w-full bg-green-600 text-white py-5 rounded-2xl font-black uppercase tracking-widest shadow-lg transform active:scale-95 transition-all text-sm">
+                                    Salva Modifiche
+                                </button>
                             </div>
                         </div>
                     </div>
                 </div>
+                <!-- FINE MOBILE -->
 
             </div>
         </div>
@@ -178,8 +191,8 @@ const saveContract = (item) => {
 </template>
 
 <style scoped>
-.role-P { color: #856404 !important; background-color: #fff3cd !important; padding: 2px 6px; border-radius: 4px; font-weight: 900; }
-.role-D { color: #155724 !important; background-color: #d4edda !important; padding: 2px 6px; border-radius: 4px; font-weight: 900; }
-.role-C { color: #004085 !important; background-color: #cce5ff !important; padding: 2px 6px; border-radius: 4px; font-weight: 900; }
-.role-A { color: #721c24 !important; background-color: #f8d7da !important; padding: 2px 6px; border-radius: 4px; font-weight: 900; }
+.role-P { color: #856404 !important; background-color: #fff3cd !important; padding: 2px 8px; border-radius: 6px; font-weight: 900; }
+.role-D { color: #155724 !important; background-color: #d4edda !important; padding: 2px 8px; border-radius: 6px; font-weight: 900; }
+.role-C { color: #004085 !important; background-color: #cce5ff !important; padding: 2px 8px; border-radius: 6px; font-weight: 900; }
+.role-A { color: #721c24 !important; background-color: #f8d7da !important; padding: 2px 8px; border-radius: 6px; font-weight: 900; }
 </style>
