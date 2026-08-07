@@ -23,15 +23,25 @@ Route::middleware(['auth'])->group(function () {
             $allParticipants = \App\Models\LeagueParticipant::where('league_id', $firstLeague->id)->orderBy('remaining_budget', 'desc')->get();
             $isMarketOpen = \App\Models\MarketSession::where('league_id', $firstLeague->id)->where('start_at', '<=', now())->where('end_at', '>=', now())->exists();
 
-            // --- CLASSIFICA PRESIDENTI (Dati aggiornati dal Pres) ---
+            // --- CLASSIFICA UFFICIALE GIORNATA 1 ---
             $ranking = [
-                'SANTOS' => 49, 'BOTAFOGO' => 44, 'PALMEIRAS' => 43, 'ATLETICO G MINEIRO' => 36,
-                'VASCO DE GAMA' => 30, 'CORINTHIANS' => 30, 'FLAMENGO' => 26, 
-                'FLUMINENSE' => 18, 'CRUZEIRO E.C.' => 17, 'SAO PAULO' => 0
+                'SANTOS' => 49,
+                'BOTAFOGO' => 44,
+                'PALMEIRAS' => 43,
+                'ATLETICO G MINEIRO' => 36,
+                'VASCO DE GAMA' => 30,
+                'CORINTHIANS' => 30,
+                'FLAMENGO' => 26,
+                'CRUZEIRO E.C.' => 18,
+                'FLUMINENSE' => 0,
+                'SAO PAULO' => 0
             ];
             
-            arsort($ranking); // Ordina per punti (decrescente)
+            arsort($ranking);
             $sortedPresidents = array_keys($ranking);
+            $myTeamClean = strtoupper(trim($user->name));
+            $pos = array_search($myTeamClean, $sortedPresidents);
+            $generalRank = ($pos !== false) ? ($pos + 1) : '-';
             
             // Cerchiamo il nome dell'utente (Presidente) nella classifica
             $userNameClean = strtoupper(trim($user->name));
