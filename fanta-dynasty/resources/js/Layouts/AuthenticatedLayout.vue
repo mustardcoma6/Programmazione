@@ -89,6 +89,10 @@ const isAdmin = computed(() => hasLeague.value && leagues.value[0]?.admin_id ===
                             </template>
                         </div>
                     </div>
+                    <!-- Tasto STORIA -->
+<NavLink :href="route('history.index')" :active="route().current('history.index')">
+    Storia
+</NavLink>
 
                     <!-- LATO DESTRO: GESTIONE + PROFILO + BURGER -->
                     <div class="flex items-center space-x-4">
@@ -144,6 +148,7 @@ const isAdmin = computed(() => hasLeague.value && leagues.value[0]?.admin_id ===
             <div :class="{'block': showingNavigationDropdown, 'hidden': !showingNavigationDropdown}" class="sm:hidden bg-white border-t border-gray-100 shadow-2xl overflow-y-auto max-h-[90vh]">
                 <div class="pt-2 pb-3 space-y-1">
                     <ResponsiveNavLink :href="route('dashboard')" :active="route().current('dashboard')">Home</ResponsiveNavLink>
+                    <ResponsiveNavLink :href="route('history.index')" :active="route().current('history.index')">Storia</ResponsiveNavLink>
                     
                     <template v-if="hasLeague">
                         <!-- SOCIETÀ MOBILE -->

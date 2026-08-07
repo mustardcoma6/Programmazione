@@ -78,6 +78,7 @@ Route::middleware(['auth'])->group(function () {
 
     // CALCIOMERCATO & ADMIN
     Route::get('/calciomercato', [MarketController::class, 'auctions'])->name('market.auctions');
+    Route::get('/storia', function() { return Inertia::render('History/Index'); })->name('history.index');
     Route::get('/admin/mercato/cronologia', [MarketController::class, 'history'])->name('market.history');
     Route::get('/admin/mercato/sessioni', [MarketController::class, 'sessions'])->name('market.sessions');
     Route::get('/admin/gestione-rose', [LeagueController::class, 'manageRosters'])->name('admin.rosters');
