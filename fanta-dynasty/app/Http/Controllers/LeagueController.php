@@ -13,14 +13,24 @@ class LeagueController extends Controller
 {
     public function rankingIndex()
     {
+        // Dati aggiornati dal Pres con logica di Trend (up, down, stable)
         $rankingData = [
-            ['name' => 'SAO PAULO', 'points' => 51], ['name' => 'SANTOS', 'points' => 49],
-            ['name' => 'BOTAFOGO', 'points' => 44], ['name' => 'PALMEIRAS', 'points' => 43],
-            ['name' => 'ATLETICO G MINEIRO', 'points' => 36], ['name' => 'VASCO DE GAMA', 'points' => 30],
-            ['name' => 'CORINTHIANS', 'points' => 30], ['name' => 'FLAMENGO', 'points' => 26],
-            ['name' => 'FLUMINENSE', 'points' => 18], ['name' => 'CRUZEIRO E.C.', 'points' => 17],
+            ['name' => 'SANTOS', 'points' => 49, 'trend' => 'up'],
+            ['name' => 'BOTAFOGO', 'points' => 44, 'trend' => 'down'],
+            ['name' => 'PALMEIRAS', 'points' => 43, 'trend' => 'stable'],
+            ['name' => 'ATLETICO G MINEIRO', 'points' => 36, 'trend' => 'up'],
+            ['name' => 'VASCO DE GAMA', 'points' => 30, 'trend' => 'stable'],
+            ['name' => 'CORINTHIANS', 'points' => 30, 'trend' => 'down'],
+            ['name' => 'FLAMENGO', 'points' => 26, 'trend' => 'stable'],
+            ['name' => 'FLUMINENSE', 'points' => 18, 'trend' => 'down'],
+            ['name' => 'CRUZEIRO E.C.', 'points' => 17, 'trend' => 'stable'],
+            ['name' => 'SAO PAULO', 'points' => 0, 'trend' => 'stable']
         ];
-        return Inertia::render('Lega/Ranking', ['ranking' => $rankingData]);
+
+        return Inertia::render('Lega/Ranking', [
+            'ranking' => $rankingData,
+            'lastUpdate' => '07/08/2026 - 09:00' // Data richiesta
+        ]);
     }
 
     public function manageFinances()
