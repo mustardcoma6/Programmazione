@@ -5,36 +5,34 @@ import { ref, computed } from 'vue';
 
 const props = defineProps({ players: Array });
 
-const getRoleClass = (role) => {
-    if (role === 'P') return 'role-P';
-    if (role === 'D') return 'role-D';
-    if (role === 'C') return 'role-C';
-    if (role === 'A') return 'role-A';
-    return '';
-};
-
-const singleForm = useForm({ name: '', role: 'D', real_team: '' });
+// Form Singolo
+const singleForm = useForm({ name: '', role: 'D', real_team: '', nationality: 'Italia' });
 const submitSingle = () => singleForm.post(route('admin.players.store'), { onSuccess: () => singleForm.reset() });
 
-// --- LOGICA IMPORTATORE MASTER ---
+// Form Bulk (5 COLONNE ORA)
 const bulkText = ref('');
 const bulkForm = useForm({ players_list: [] });
 
 const processBulkImport = () => {
-    if (!bulkText.value.trim()) return alert("Incolla i dati!");
     const lines = bulkText.value.split('\n');
     const results = [];
     lines.forEach(line => {
         let parts = line.split('\t'); 
-        if (parts.length < 4) parts = line.split(';');
-        if (parts.length < 4) parts = line.split(',');
-        if (parts.length >= 4) {
-            results.push({ name: parts[0].trim(), role: parts[1].trim().toUpperCase(), team: parts[2].trim(), quotation: parts[3].trim().replace(/[^0-9]/g, '') });
+        if (parts.length < 5) parts = line.split(';');
+        if (parts.length < 5) parts = line.split(',');
+        if (parts.length >= 5) {
+            results.push({ 
+                name: parts[0].trim(), 
+                role: parts[1].trim(), 
+                team: parts[2].trim(), 
+                quotation: parts[3].trim().replace(/[^0-9]/g, ''),
+                nationality: parts[4].trim() // QUINTA COLONNA
+            });
         }
     });
-    if (results.length === 0) return alert("Formato Errato!");
+    if (results.length === 0) return alert("Formato Errato! Usa: Nome, Ruolo, Squadra, Quota, Nazione");
     bulkForm.players_list = results;
-    bulkForm.post(route('admin.players.bulk-import'), { preserveScroll: true, onSuccess: () => { bulkText.value = ''; alert("Sincronizzazione completata!"); } });
+    bulkForm.post(route('admin.players.bulk-import'), { preserveScroll: true, onSuccess: () => { bulkText.value = ''; alert("Sincronizzato!"); } });
 };
 
 const deletePlayer = (p) => {
@@ -42,48 +40,51 @@ const deletePlayer = (p) => {
 };
 
 const search = ref('');
-const filteredPlayers = computed(() => {
-    const list = props.players || [];
-    return list.filter(p => p.name.toLowerCase().includes(search.value.toLowerCase()));
-});
+const filteredPlayers = computed(() => (props.players || []).filter(p => p.name.toLowerCase().includes(search.value.toLowerCase())));
 </script>
 
 <template>
     <Head title="Gestione Listone" />
     <AuthenticatedLayout>
-        <template #header><h2 class="font-black text-xl uppercase tracking-tighter text-gray-800">Direzione Listone Mondiale</h2></template>
+        <template #header><h2 class="font-black text-xl uppercase tracking-tighter">Gestione Mondiale Listone</h2></template>
         <div class="py-12 max-w-7xl mx-auto px-4 space-y-10">
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <div class="bg-white p-6 shadow-xl rounded-2xl border-t-4 border-indigo-600">
-                    <h3 class="font-black uppercase text-xs mb-4 text-gray-400">Aggiunta Singola</h3>
+                <div class="bg-white p-6 shadow rounded-xl border-t-4 border-indigo-600">
+                    <h3 class="font-black text-xs uppercase mb-4">Aggiunta Singola</h3>
                     <form @submit.prevent="submitSingle" class="space-y-4">
-                        <input v-model="singleForm.name" type="text" class="w-full rounded-xl border-gray-300 text-sm" placeholder="Nome" required>
-                        <div class="flex gap-2">
-                            <select v-model="singleForm.role" class="flex-1 rounded-xl border-gray-300 text-sm"><option value="P">P</option><option value="D">D</option><option value="C">C</option><option value="A">A</option></select>
-                            <input v-model="singleForm.real_team" type="text" class="flex-1 rounded-xl border-gray-300 text-sm" placeholder="Squadra" required>
+                        <input v-model="singleForm.name" type="text" class="w-full rounded-lg border-gray-300" placeholder="Nome" required>
+                        <div class="grid grid-cols-3 gap-2">
+                            <select v-model="singleForm.role" class="rounded-lg border-gray-300 text-sm"><option value="P">P</option><option value="D">D</option><option value="C">C</option><option value="A">A</option></select>
+                            <input v-model="singleForm.real_team" type="text" class="rounded-lg border-gray-300 text-sm" placeholder="Squadra" required>
+                            <input v-model="singleForm.nationality" type="text" class="rounded-lg border-gray-300 text-sm" placeholder="Nazione" required>
                         </div>
-                        <button class="w-full bg-indigo-600 text-white py-3 rounded-xl font-black uppercase text-xs">Salva</button>
+                        <button class="w-full bg-indigo-600 text-white py-2 rounded-lg font-black uppercase text-xs">Aggiungi</button>
                     </form>
                 </div>
-                <div class="bg-white p-6 shadow-xl rounded-2xl border-t-4 border-green-600">
-                    <h3 class="font-black uppercase text-xs mb-2 text-green-600">Importatore Excel</h3>
-                    <textarea v-model="bulkText" rows="4" class="w-full rounded-xl border-gray-300 text-xs font-mono" placeholder="Nome	Ruolo	Squadra	Quota"></textarea>
-                    <button @click="processBulkImport" :disabled="bulkForm.processing" class="mt-4 w-full bg-green-600 text-white py-3 rounded-xl font-black uppercase text-xs">Sincronizza Listone</button>
+                <div class="bg-white p-6 shadow rounded-xl border-t-4 border-green-600">
+                    <h3 class="font-black text-xs uppercase mb-2">Importatore Master</h3>
+                    <p class="text-[9px] text-gray-400 mb-4 uppercase">Ordine: Nome | Ruolo | Squadra | Quota | Nazione</p>
+                    <textarea v-model="bulkText" rows="4" class="w-full rounded-lg border-gray-300 text-xs font-mono" placeholder="Lautaro Martinez	A	Inter	42	Argentina"></textarea>
+                    <button @click="processBulkImport" :disabled="bulkForm.processing" class="mt-4 w-full bg-green-600 text-white py-3 rounded-lg font-black uppercase text-xs">Aggiorna Listone</button>
                 </div>
             </div>
-            <div class="bg-white shadow-2xl rounded-3xl overflow-hidden border border-gray-100">
+            <!-- TABELLA -->
+            <div class="bg-white shadow rounded-xl overflow-hidden border">
                 <div class="p-4 bg-gray-50 border-b flex justify-between items-center px-8">
                     <input v-model="search" type="text" placeholder="Cerca..." class="w-full max-w-sm rounded-xl border-gray-300 text-sm">
-                    <span class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Totale: {{ (players || []).length }}</span>
                 </div>
                 <table class="w-full text-left">
-                    <thead><tr class="bg-gray-100 text-[10px] font-black uppercase text-gray-500"><th class="p-6">Ruolo</th><th class="p-6">Nome</th><th class="p-6 text-center">Quota</th><th class="p-6"></th></tr></thead>
+                    <thead><tr class="bg-gray-100 text-[10px] font-black uppercase">
+                        <th class="p-4">Ruolo</th><th class="p-4">Nome</th><th class="p-4">Squadra</th><th class="p-4">Nazione</th><th class="p-4 text-center">Quota</th><th class="p-4"></th>
+                    </tr></thead>
                     <tbody>
-                        <tr v-for="p in filteredPlayers" :key="p.id" class="border-b last:border-0 hover:bg-gray-50 transition">
-                            <td class="p-6"><span class="font-black px-3 py-1 rounded-full text-xs shadow-sm" :class="getRoleClass(p.role)">{{ p.role }}</span></td>
-                            <td class="p-6"><p class="font-black uppercase text-sm text-gray-800">{{ p.name }}</p><p class="text-[10px] text-gray-400 font-bold uppercase">{{ p.real_team }}</p></td>
-                            <td class="p-6 text-center font-mono font-black text-green-600 text-lg">{{ p.quotation }}</td>
-                            <td class="p-6 text-right"><button @click="deletePlayer(p)" class="text-red-500 font-black text-[10px] border border-red-100 px-3 py-1 rounded-lg hover:bg-red-50 transition">Elimina</button></td>
+                        <tr v-for="p in filteredPlayers" :key="p.id" class="border-b hover:bg-gray-50 transition">
+                            <td class="p-4"><b class="uppercase">{{ p.role }}</b></td>
+                            <td class="p-4 font-black uppercase text-sm">{{ p.name }}</td>
+                            <td class="p-4 text-gray-400 text-[10px] uppercase font-bold">{{ p.real_team }}</td>
+                            <td class="p-4 text-gray-400 text-[10px] uppercase font-bold">{{ p.nationality }}</td>
+                            <td class="p-4 text-center font-mono font-black text-green-600">{{ p.quotation }}</td>
+                            <td class="p-4 text-right"><button @click="deletePlayer(p)" class="text-red-500 font-black text-[10px]">Elimina</button></td>
                         </tr>
                     </tbody>
                 </table>
