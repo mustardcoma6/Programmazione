@@ -8,85 +8,56 @@ use Inertia\Inertia;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\{RealPlayer, LeagueParticipant, Roster, PrimaveraRoster, League, Auction, MarketSession, Autobid};
+use Illuminate\Http\Request;
+use Inertia\Inertia;
+use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
+
 class MarketController extends Controller
 {
-    // --- 1. LA MIA ROSA (Unione Pro + Primavera) ---
-    public function myRosterPage() 
-    {
+    // --- PAGINA FINANZE SOCIETARIE (AGGIORNATA CON RANKING QUOTAZIONI) ---
+    public function financesPage() {
         $user = auth()->user();
         $participant = LeagueParticipant::where('user_id', $user->id)->first();
         if (!$participant) return redirect()->route('dashboard');
 
-        // Prendiamo i giocatori della Prima Squadra
-        $proPlayers = Roster::where('league_id', $participant->league_id)
-            ->where('user_id', $user->id)
-            ->with('player')
-            ->get()
-            ->map(function($item) {
-                $item->is_primavera = false;
-                return $item;
-            });
-
-        // Prendiamo i giocatori della Primavera
-        $primaveraPlayers = PrimaveraRoster::where('league_id', $participant->league_id)
-            ->where('user_id', $user->id)
-            ->with('player')
-            ->get()
-            ->map(function($item) {
-                $item->is_primavera = true;
-                return $item;
-            });
-
-        // Fondiamo le liste e ordiniamo per Ruolo (P,D,C,A) e poi Nome
-        $mergedRoster = $proPlayers->concat($primaveraPlayers)->sortBy([
-            fn ($a, $b) => array_search($a->player->role, ['P', 'D', 'C', 'A']) <=> array_search($b->player->role, ['P', 'D', 'C', 'A']),
-            ['player.name', 'asc']
-        ])->values()->all();
-
-        $rosterValue = $proPlayers->sum('purchase_price') + $primaveraPlayers->sum('purchase_price');
-
-        return Inertia::render('Roster/Index', [
-            'myData' => $participant,
-            'myPlayers' => $mergedRoster,
-            'rosterValue' => (int)$rosterValue
-        ]);
-    }
-
-    // --- 2. SEZIONE CALCIOMERCATO ---
-    public function auctions() {
-        $user = auth()->user();
-        $participant = LeagueParticipant::where('user_id', $user->id)->first();
-        if (!$participant) return redirect()->route('dashboard');
         $league = League::find($participant->league_id);
         
-        $this->processExpiredAuctions($league->id);
+        // 1. Prendiamo tutti i partecipanti della lega
+        $allTeams = LeagueParticipant::where('league_id', $league->id)
+            ->with('user')
+            ->get();
 
-        $now = Carbon::now('Europe/Rome');
-        $currentSession = MarketSession::where('league_id', $league->id)
-            ->where('start_at', '<=', $now)
-            ->where('end_at', '>=', $now)
-            ->first();
+        // 2. Per ogni squadra calcoliamo il valore totale delle quotazioni (Pro + Primavera)
+        foreach ($allTeams as $team) {
+            // Somma quotazioni Prima Squadra
+            $proValue = DB::table('rosters')
+                ->join('real_players', 'rosters.real_player_id', '=', 'real_players.id')
+                ->where('rosters.user_id', $team->user_id)
+                ->where('rosters.league_id', $league->id)
+                ->sum('real_players.quotation');
 
-        // ESCLUSIONE TOTALE: Pro + Primavera + Aste in corso
-        $soldIds = Roster::where('league_id', $league->id)->pluck('real_player_id')->toArray();
-        $primaIds = PrimaveraRoster::where('league_id', $league->id)->pluck('real_player_id')->toArray();
-        $auctionedIds = Auction::where('league_id', $league->id)->where('is_finished', false)->pluck('real_player_id')->toArray();
-        
-        $excluded = array_unique(array_merge($soldIds, $primaIds, $auctionedIds));
+            // Somma quotazioni Primavera
+            $primaveraValue = DB::table('primavera_rosters')
+                ->join('real_players', 'primavera_rosters.real_player_id', '=', 'real_players.id')
+                ->where('primavera_rosters.user_id', $team->user_id)
+                ->where('primavera_rosters.league_id', $league->id)
+                ->sum('real_players.quotation');
 
-        $availablePlayers = RealPlayer::whereNotIn('id', $excluded)->orderBy('role', 'desc')->get();
-        $myRoster = Roster::where('league_id', $league->id)->where('user_id', $user->id)->with('player')->get();
-        $frozenCredits = Auction::where('league_id', $league->id)->where('user_id', $user->id)->where('is_finished', false)->sum('current_bid') ?? 0;
+            $team->total_quotation_value = (int)$proValue + (int)$primaveraValue;
+        }
 
-        return Inertia::render('Market/Auctions', [
-            'league' => $league,
-            'isMarketOpen' => (bool)$currentSession,
-            'currentSession' => $currentSession,
+        // 3. Ordiniamo le squadre dal valore più alto al più basso
+        $sortedTeams = $allTeams->sortByDesc('total_quotation_value')->values()->all();
+
+        return Inertia::render('Societa/Finances', [
             'myData' => $participant,
-            'frozenCredits' => (int)$frozenCredits,
-            'myRoster' => $myRoster,
-            'availablePlayers' => $availablePlayers,
-            'activeAuctions' => Auction::where('league_id', $league->id)->where('is_finished', false)->with(['player', 'user'])->get()
+            'ranking' => $sortedTeams
         ]);
     }
 
