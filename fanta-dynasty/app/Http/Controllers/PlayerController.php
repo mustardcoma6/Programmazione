@@ -31,50 +31,22 @@ class PlayerController extends Controller
         return Inertia::render('Admin/Players', ['players' => $players]);
     }
 
-    // SALVA SINGOLO (NAZIONALITÀ RIMOSSA)
     public function store(Request $request) { 
-        $request->validate([
-            'name' => 'required|string', 
-            'role' => 'required|in:P,D,C,A', 
-            'real_team' => 'required'
-        ]); 
-        RealPlayer::create([
-            'name' => $request->name, 
-            'role' => $request->role, 
-            'real_team' => $request->real_team, 
-            'nationality' => 'Italia', // Default automatico
-            'initial_value' => 1, 
-            'quotation' => 1
-        ]); 
+        $request->validate(['name' => 'required|string', 'role' => 'required|in:P,D,C,A', 'real_team' => 'required']); 
+        RealPlayer::create(['name' => $request->name, 'role' => $request->role, 'real_team' => $request->real_team, 'initial_value' => 1, 'quotation' => 1]); 
         return back(); 
     }
 
-    // IMPORTATORE MASSIVO (4 COLONNE: Nome, Ruolo, Squadra, Quota)
     public function bulkImport(Request $request) { 
         $list = $request->input('players_list'); 
         if (!is_array($list)) return back(); 
-
         foreach ($list as $item) { 
             $name = isset($item['name']) ? trim($item['name']) : null;
             $role = isset($item['role']) ? strtoupper(trim($item['role'])) : null;
-            $team = isset($item['team']) ? trim($item['team']) : 'Sconosciuta';
-            $quote = isset($item['quotation']) ? (int)$item['quotation'] : 1;
-
-            if (!$name || !in_array($role, ['P', 'D', 'C', 'A'])) {
-                continue; 
-            }
-
-            RealPlayer::updateOrCreate(
-                ['name' => $name], 
-                [
-                    'role' => $role, 
-                    'real_team' => $team, 
-                    'quotation' => $quote, 
-                    'initial_value' => $quote
-                ]
-            ); 
+            if (!$name || !in_array($role, ['P', 'D', 'C', 'A'])) continue;
+            RealPlayer::updateOrCreate(['name' => $name], ['role' => $role, 'real_team' => $item['team'] ?? 'Sconosciuta', 'quotation' => (int)($item['quotation'] ?? 1), 'initial_value' => (int)($item['quotation'] ?? 1)]); 
         } 
-        return back()->with('message', 'Sincronizzazione completata!'); 
+        return back(); 
     }
 
     public function massUpdateQuotations(Request $request) { 
@@ -87,16 +59,32 @@ class PlayerController extends Controller
         return back(); 
     }
 
-    public function destroy(RealPlayer $player) { 
-        DB::transaction(function () use ($player) { 
-            Roster::where('real_player_id', $player->id)->delete(); 
-            PrimaveraRoster::where('real_player_id', $player->id)->delete(); 
-            LineupDetail::where('real_player_id', $player->id)->delete(); 
-            $auctionIds = Auction::where('real_player_id', $player->id)->pluck('id'); 
-            if($auctionIds->count() > 0) Autobid::whereIn('auction_id', $auctionIds)->delete(); 
-            Auction::where('real_player_id', $player->id)->delete(); 
-            $player->delete(); 
-        }); 
-        return back(); 
+    // --- LOGICA DI ELIMINAZIONE CORAZZATA ---
+    public function destroy($id)
+    {
+        $player = RealPlayer::findOrFail($id);
+
+        DB::transaction(function () use ($player) {
+            // 1. Eliminiamo gli Autobid legati alle aste di questo giocatore
+            $auctionIds = Auction::where('real_player_id', $player->id)->pluck('id');
+            if ($auctionIds->isNotEmpty()) {
+                Autobid::whereIn('auction_id', $auctionIds)->delete();
+            }
+
+            // 2. Eliminiamo le Aste
+            Auction::where('real_player_id', $player->id)->delete();
+
+            // 3. Eliminiamo dalle Rose (Pro e Primavera)
+            Roster::where('real_player_id', $player->id)->delete();
+            PrimaveraRoster::where('real_player_id', $player->id)->delete();
+
+            // 4. Eliminiamo dalle formazioni
+            LineupDetail::where('real_player_id', $player->id)->delete();
+
+            // 5. Infine eliminiamo il giocatore dal listone
+            $player->delete();
+        });
+
+        return back()->with('message', 'Eliminato con successo!');
     }
 }
