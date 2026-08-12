@@ -16,7 +16,11 @@ const openMercato = ref(false);
 const user = usePage().props.auth.user;
 const leagues = computed(() => usePage().props.leagues || []);
 const hasLeague = computed(() => leagues.value.length > 0);
-const isAdmin = computed(() => hasLeague.value && leagues.value[0]?.admin_id === user.id);
+const isAdmin = computed(() => {
+    return leagues.value && leagues.value.length > 0 && leagues.value[0] 
+           ? leagues.value[0].admin_id === user.id 
+           : false;
+});
 </script>
 
 <template>
