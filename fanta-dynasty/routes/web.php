@@ -7,6 +7,7 @@ use Inertia\Inertia;
 Route::get('/', function () { return Inertia::render('Welcome'); });
 
 Route::middleware(['auth'])->group(function () {
+    
     // HOME
     Route::get('/dashboard', [LeagueController::class, 'dashboard'])->name('dashboard');
 
@@ -23,21 +24,21 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/lega/sala-trofei', function() { return redirect()->route('societa.index'); })->name('league.trophies');
     Route::get('/players', [PlayerController::class, 'index'])->name('players.index');
 
-    // CALCIOMERCATO E ASTE
+    // CALCIOMERCATO
     Route::get('/calciomercato', [MarketController::class, 'auctions'])->name('market.auctions');
     Route::get('/admin/mercato/sessioni', [MarketController::class, 'sessions'])->name('market.sessions');
-    Route::post('/market/sessions/save', [MarketController::class, 'storeSession'])->name('market.sessions.store');
-    Route::post('/market/emergency-close', [MarketController::class, 'closeMarketNow'])->name('market.close-all');
     Route::get('/admin/mercato/cronologia', [MarketController::class, 'history'])->name('market.history');
+    Route::post('/market/sessions/save', [MarketController::class, 'storeSession'])->name('market.sessions.store');
+    Route::post('/market/close-all', [MarketController::class, 'closeMarketNow'])->name('market.close-all');
 
-    // AMMINISTRAZIONE
+    // GESTIONE ADMIN
     Route::get('/admin/gestione-rose', [LeagueController::class, 'manageRosters'])->name('admin.rosters');
     Route::get('/admin/gestione-budget', [LeagueController::class, 'manageCredits'])->name('admin.credits');
     Route::get('/admin/gestione-listone', [PlayerController::class, 'adminIndex'])->name('admin.players');
     Route::get('/admin/gestione-finanze', [LeagueController::class, 'manageFinances'])->name('admin.finances');
     Route::get('/admin/gestione-primavera', [LeagueController::class, 'managePrimavera'])->name('admin.primavera');
-
-    // AZIONI DATABASE
+    
+    // AZIONI
     Route::post('/admin/players/bulk', [PlayerController::class, 'bulkImport'])->name('admin.players.bulk-import');
     Route::post('/admin/players/mass-update', [PlayerController::class, 'massUpdateQuotations'])->name('admin.players.mass-update');
     Route::post('/admin/update-resources', [LeagueController::class, 'updateResources'])->name('admin.resources.update');
@@ -47,8 +48,6 @@ Route::middleware(['auth'])->group(function () {
     Route::delete('/admin/kick-participant/{participant}', [LeagueController::class, 'kickParticipant'])->name('admin.participant.kick');
     Route::post('/admin/primavera-assign', [LeagueController::class, 'assignPrimavera'])->name('admin.primavera.assign');
     Route::post('/admin/primavera-remove', [LeagueController::class, 'removePrimavera'])->name('admin.primavera.remove');
-
-    // OPERAZIONI UTENTE
     Route::post('/buy-player', [MarketController::class, 'buy'])->name('players.buy');
     Route::post('/release-player', [MarketController::class, 'release'])->name('players.release');
     Route::post('/market/update-years', [MarketController::class, 'updateContract'])->name('market.update-years');
@@ -61,6 +60,11 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/profile/team-name', [ProfileController::class, 'updateTeamName'])->name('profile.team.update');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+    Route::get('/leagues/create', [LeagueController::class, 'create'])->name('leagues.create');
+    Route::post('/leagues', [LeagueController::class, 'store'])->name('leagues.store');
+    Route::get('/leagues/join', [LeagueController::class, 'join'])->name('leagues.join');
+    Route::post('/leagues/join', [LeagueController::class, 'joinStore'])->name('leagues.join.store');
+    Route::post('/leagues/{league}/toggle-market', [LeagueController::class, 'toggleMarket'])->name('leagues.market.toggle');
 });
 
 require __DIR__.'/auth.php';
