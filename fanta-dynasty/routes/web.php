@@ -7,7 +7,6 @@ use Inertia\Inertia;
 Route::get('/', function () { return Inertia::render('Welcome'); });
 
 Route::middleware(['auth'])->group(function () {
-    
     // HOME
     Route::get('/dashboard', [LeagueController::class, 'dashboard'])->name('dashboard');
 
@@ -26,12 +25,12 @@ Route::middleware(['auth'])->group(function () {
 
     // CALCIOMERCATO E ASTE
     Route::get('/calciomercato', [MarketController::class, 'auctions'])->name('market.auctions');
-    Route::get('/admin/mercato/cronologia', [MarketController::class, 'history'])->name('market.history');
     Route::get('/admin/mercato/sessioni', [MarketController::class, 'sessions'])->name('market.sessions');
-    Route::post('/market/sessions/store', [MarketController::class, 'storeSession'])->name('market.sessions.store');
-    Route::post('/market/close-all', [MarketController::class, 'closeMarketNow'])->name('market.close-all');
+    Route::post('/market/sessions/save', [MarketController::class, 'storeSession'])->name('market.sessions.store');
+    Route::post('/market/emergency-close', [MarketController::class, 'closeMarketNow'])->name('market.close-all');
+    Route::get('/admin/mercato/cronologia', [MarketController::class, 'history'])->name('market.history');
 
-    // AMMINISTRAZIONE ROSE E BUDGET
+    // AMMINISTRAZIONE
     Route::get('/admin/gestione-rose', [LeagueController::class, 'manageRosters'])->name('admin.rosters');
     Route::get('/admin/gestione-budget', [LeagueController::class, 'manageCredits'])->name('admin.credits');
     Route::get('/admin/gestione-listone', [PlayerController::class, 'adminIndex'])->name('admin.players');
@@ -49,12 +48,13 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/admin/primavera-assign', [LeagueController::class, 'assignPrimavera'])->name('admin.primavera.assign');
     Route::post('/admin/primavera-remove', [LeagueController::class, 'removePrimavera'])->name('admin.primavera.remove');
 
-    // OPERAZIONI MERCATO UTENTE
+    // OPERAZIONI UTENTE
     Route::post('/buy-player', [MarketController::class, 'buy'])->name('players.buy');
     Route::post('/release-player', [MarketController::class, 'release'])->name('players.release');
     Route::post('/market/update-years', [MarketController::class, 'updateContract'])->name('market.update-years');
     Route::get('/lineup', [LineupController::class, 'index'])->name('lineup.index');
     Route::post('/lineup', [LineupController::class, 'store'])->name('lineup.store');
+    Route::post('/leagues/{league}/update-market', [LeagueController::class, 'updateMarket'])->name('leagues.market.update');
 
     // PROFILO
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
