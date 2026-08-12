@@ -31,37 +31,44 @@ class PlayerController extends Controller
         return Inertia::render('Admin/Players', ['players' => $players]);
     }
 
+    // SALVA SINGOLO (NAZIONALITÀ RIMOSSA)
     public function store(Request $request) { 
-        $request->validate(['name' => 'required|string', 'role' => 'required|in:P,D,C,A', 'real_team' => 'required', 'nationality' => 'required']); 
-        RealPlayer::create(['name' => $request->name, 'role' => $request->role, 'real_team' => $request->real_team, 'nationality' => $request->nationality, 'initial_value' => 1, 'quotation' => 1]); 
+        $request->validate([
+            'name' => 'required|string', 
+            'role' => 'required|in:P,D,C,A', 
+            'real_team' => 'required'
+        ]); 
+        RealPlayer::create([
+            'name' => $request->name, 
+            'role' => $request->role, 
+            'real_team' => $request->real_team, 
+            'nationality' => 'Italia', // Default automatico
+            'initial_value' => 1, 
+            'quotation' => 1
+        ]); 
         return back(); 
     }
 
-    // --- IMPORTATORE BULK CORAZZATO ---
+    // IMPORTATORE MASSIVO (4 COLONNE: Nome, Ruolo, Squadra, Quota)
     public function bulkImport(Request $request) { 
         $list = $request->input('players_list'); 
         if (!is_array($list)) return back(); 
 
         foreach ($list as $item) { 
-            // 1. Pulizia e Validazione Dati
             $name = isset($item['name']) ? trim($item['name']) : null;
             $role = isset($item['role']) ? strtoupper(trim($item['role'])) : null;
             $team = isset($item['team']) ? trim($item['team']) : 'Sconosciuta';
             $quote = isset($item['quotation']) ? (int)$item['quotation'] : 1;
-            $nation = isset($item['nationality']) ? trim($item['nationality']) : 'Italia';
 
-            // 2. Se mancano Nome o Ruolo, o se il Ruolo è invalido, SALTA la riga invece di crashare
             if (!$name || !in_array($role, ['P', 'D', 'C', 'A'])) {
                 continue; 
             }
 
-            // 3. Logica Upsert
             RealPlayer::updateOrCreate(
                 ['name' => $name], 
                 [
                     'role' => $role, 
                     'real_team' => $team, 
-                    'nationality' => $nation,
                     'quotation' => $quote, 
                     'initial_value' => $quote
                 ]
