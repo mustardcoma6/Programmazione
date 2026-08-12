@@ -31,12 +31,11 @@ const processBulkImport = () => {
     bulkForm.post(route('admin.players.bulk-import'), { preserveScroll: true, onSuccess: () => { bulkText.value = ''; alert("Sincronizzato!"); } });
 };
 
-// --- AZIONE ELIMINA (CORRETTA) ---
 const deletePlayer = (p) => {
-    if (confirm(`VUOI ELIMINARE DEFINITIVAMENTE ${p.name.toUpperCase()}?\n\nVerrà rimosso dal listone e da tutte le rose.`)) {
-        router.delete(route('admin.players.destroy', p.id), {
+    if (confirm(`Eliminare ${p.name}?`)) {
+        // Usiamo l'ID del giocatore (p.id)
+        router.delete(route('admin.players.destroy', { player: p.id }), {
             preserveScroll: true,
-            onSuccess: () => alert("Rimosso con successo.")
         });
     }
 };
