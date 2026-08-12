@@ -15,7 +15,7 @@ class HandleInertiaRequests extends Middleware
             'auth' => [
                 'user' => $request->user(),
             ],
-            // TRUCCO SENIOR: Mandiamo sempre le leghe, se non ci sono mandiamo un elenco vuoto
+            // Condividiamo le leghe globalmente per far funzionare il menu in ogni pagina
             'leagues' => $request->user() ? $request->user()->leagues()->get() : [],
             'flash' => [
                 'message' => fn () => $request->session()->get('message'),

@@ -7,7 +7,6 @@ use Inertia\Inertia;
 Route::get('/', function () { return Inertia::render('Welcome'); });
 
 Route::middleware(['auth'])->group(function () {
-    
     // HOME
     Route::get('/dashboard', [LeagueController::class, 'dashboard'])->name('dashboard');
 
@@ -23,6 +22,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/lega/ranking', [LeagueController::class, 'rankingIndex'])->name('league.ranking');
     Route::get('/lega/sala-trofei', function() { return redirect()->route('societa.index'); })->name('league.trophies');
     Route::get('/players', [PlayerController::class, 'index'])->name('players.index');
+    Route::get('/storia', function() { return Inertia::render('History/Index'); })->name('history.index');
 
     // CALCIOMERCATO
     Route::get('/calciomercato', [MarketController::class, 'auctions'])->name('market.auctions');
@@ -37,7 +37,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/admin/gestione-listone', [PlayerController::class, 'adminIndex'])->name('admin.players');
     Route::get('/admin/gestione-finanze', [LeagueController::class, 'manageFinances'])->name('admin.finances');
     Route::get('/admin/gestione-primavera', [LeagueController::class, 'managePrimavera'])->name('admin.primavera');
-    
+
     // AZIONI
     Route::post('/admin/players/bulk', [PlayerController::class, 'bulkImport'])->name('admin.players.bulk-import');
     Route::post('/admin/players/mass-update', [PlayerController::class, 'massUpdateQuotations'])->name('admin.players.mass-update');
