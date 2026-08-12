@@ -1,13 +1,22 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head, useForm } from '@inertiajs/vue3';
+import { Head, useForm, router } from '@inertiajs/vue3'; // <--- IMPORTANTE: AGGIUNTO router
 import { ref, computed } from 'vue';
 
 const props = defineProps({ players: Array });
 
-// ... (logica store e bulkImport rimangono uguali) ...
+// --- COLORI RUOLI ---
+const getRoleClass = (role) => {
+    if (role === 'P') return 'role-P';
+    if (role === 'D') return 'role-D';
+    if (role === 'C') return 'role-C';
+    if (role === 'A') return 'role-A';
+    return '';
+};
+
 const singleForm = useForm({ name: '', role: 'D', real_team: '' });
 const submitSingle = () => singleForm.post(route('admin.players.store'), { onSuccess: () => singleForm.reset() });
+
 const bulkText = ref('');
 const bulkForm = useForm({ players_list: [] });
 const processBulkImport = () => {
@@ -22,12 +31,12 @@ const processBulkImport = () => {
     bulkForm.post(route('admin.players.bulk-import'), { preserveScroll: true, onSuccess: () => { bulkText.value = ''; alert("Sincronizzato!"); } });
 };
 
-// --- FIX TASTO ELIMINA ---
+// --- AZIONE ELIMINA (CORRETTA) ---
 const deletePlayer = (p) => {
-    if (confirm(`Vuoi eliminare definitivamente ${p.name}? Verrà rimosso da ogni squadra e asta.`)) {
+    if (confirm(`VUOI ELIMINARE DEFINITIVAMENTE ${p.name.toUpperCase()}?\n\nVerrà rimosso dal listone e da tutte le rose.`)) {
         router.delete(route('admin.players.destroy', p.id), {
             preserveScroll: true,
-            onSuccess: () => alert("Giocatore rimosso ovunque.")
+            onSuccess: () => alert("Rimosso con successo.")
         });
     }
 };
@@ -39,36 +48,62 @@ const filteredPlayers = computed(() => (props.players || []).filter(p => p.name.
 <template>
     <Head title="Gestione Listone" />
     <AuthenticatedLayout>
-        <template #header><h2 class="font-black text-xl uppercase text-gray-800">Direzione Listone</h2></template>
+        <template #header><h2 class="font-black text-xl uppercase text-gray-800 tracking-tighter">Gestione Listone Mondiale</h2></template>
+        
         <div class="py-12 max-w-7xl mx-auto px-4 space-y-10">
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <div class="bg-white p-6 shadow rounded-xl border-t-4 border-indigo-600">
-                    <h3 class="font-black text-xs uppercase mb-4 text-gray-400">Aggiunta Rapida</h3>
+                <!-- BOX SINGOLO -->
+                <div class="bg-white p-6 shadow-xl rounded-2xl border-t-4 border-indigo-600 h-fit">
+                    <h3 class="font-black text-xs uppercase mb-4 text-gray-400 tracking-widest">Aggiunta Singola</h3>
                     <form @submit.prevent="submitSingle" class="space-y-4">
-                        <input v-model="singleForm.name" type="text" class="w-full rounded-lg border-gray-300 shadow-sm" placeholder="Nome" required>
+                        <input v-model="singleForm.name" type="text" class="w-full rounded-xl border-gray-300" placeholder="Nome" required>
                         <div class="grid grid-cols-2 gap-2">
-                            <select v-model="singleForm.role" class="rounded-lg border-gray-300 shadow-sm"><option value="P">P</option><option value="D">D</option><option value="C">C</option><option value="A">A</option></select>
-                            <input v-model="singleForm.real_team" type="text" class="rounded-lg border-gray-300 shadow-sm" placeholder="Squadra" required>
+                            <select v-model="singleForm.role" class="rounded-xl border-gray-300 text-sm"><option value="P">P</option><option value="D">D</option><option value="C">C</option><option value="A">A</option></select>
+                            <input v-model="singleForm.real_team" type="text" class="rounded-xl border-gray-300" placeholder="Squadra" required>
                         </div>
-                        <button class="w-full bg-indigo-600 text-white py-2 rounded-lg font-black uppercase text-xs">Salva</button>
+                        <button class="w-full bg-indigo-600 text-white py-3 rounded-xl font-black uppercase text-xs shadow-lg">Salva nel Sistema</button>
                     </form>
                 </div>
-                <div class="bg-white p-6 shadow rounded-xl border-t-4 border-green-600">
-                    <h3 class="font-black text-xs uppercase mb-2 text-green-600">Importatore Excel</h3>
-                    <textarea v-model="bulkText" rows="4" class="w-full rounded-lg border-gray-300 text-xs font-mono" placeholder="Nome	Ruolo	Squadra	Quota"></textarea>
-                    <button @click="processBulkImport" :disabled="bulkForm.processing" class="mt-4 w-full bg-green-600 text-white py-3 rounded-xl font-black uppercase text-xs">Sincronizza</button>
+
+                <!-- BOX EXCEL -->
+                <div class="bg-white p-6 shadow-xl rounded-2xl border-t-4 border-green-600 h-fit">
+                    <h3 class="font-black text-xs uppercase mb-2 text-green-600 tracking-widest">Importatore Excel (4 Colonne)</h3>
+                    <p class="text-[9px] text-gray-400 uppercase mb-4">Nome | Ruolo | Squadra | Quota</p>
+                    <textarea v-model="bulkText" rows="4" class="w-full rounded-xl border-gray-300 text-xs font-mono bg-gray-50" placeholder="Lautaro Martinez	A	Inter	42"></textarea>
+                    <button @click="processBulkImport" :disabled="bulkForm.processing" class="mt-4 w-full bg-green-600 text-white py-3 rounded-xl font-black uppercase text-xs shadow-lg">Sincronizza Listone</button>
                 </div>
             </div>
-            <div class="bg-white shadow rounded-xl overflow-hidden border">
-                <div class="p-4 bg-gray-50 border-b flex justify-between items-center"><input v-model="search" type="text" placeholder="Cerca..." class="w-full max-w-sm rounded-xl border-gray-300 text-sm"></div>
+
+            <!-- TABELLA -->
+            <div class="bg-white shadow-2xl rounded-3xl overflow-hidden border border-gray-100">
+                <div class="p-4 bg-gray-50 border-b flex justify-between items-center px-8">
+                    <input v-model="search" type="text" placeholder="Cerca..." class="w-full max-w-sm rounded-xl border-gray-300 text-sm">
+                    <span class="text-[10px] font-black text-gray-400 uppercase">Totale: {{ (players || []).length }}</span>
+                </div>
                 <table class="w-full text-left">
-                    <thead><tr class="bg-gray-100 text-[10px] font-black uppercase text-gray-500"><th class="p-6">Ruolo</th><th class="p-6">Nome</th><th class="p-6 text-center">Quota</th><th class="p-4"></th></tr></thead>
+                    <thead>
+                        <tr class="bg-gray-100 text-[10px] font-black uppercase text-gray-500">
+                            <th class="p-6">Ruolo</th>
+                            <th class="p-6">Nome / Squadra</th>
+                            <th class="p-6 text-center">Quotazione</th>
+                            <th class="p-6 text-right">Azione</th>
+                        </tr>
+                    </thead>
                     <tbody>
                         <tr v-for="p in filteredPlayers" :key="p.id" class="border-b hover:bg-gray-50 transition">
-                            <td class="p-6"><b>{{ p.role }}</b></td>
-                            <td class="p-6"><p class="font-black uppercase text-sm text-gray-800">{{ p.name }}</p><p class="text-[10px] text-gray-400">{{ p.real_team }}</p></td>
-                            <td class="p-6 text-center font-mono font-black text-green-600">{{ p.quotation }}</td>
-                            <td class="p-6 text-right"><button @click="deletePlayer(p)" class="text-red-500 font-bold uppercase text-[10px] hover:underline">Elimina</button></td>
+                            <td class="p-6 w-20">
+                                <span class="font-black px-3 py-1 rounded-lg text-xs" :class="getRoleClass(p.role)">{{ p.role }}</span>
+                            </td>
+                            <td class="p-6">
+                                <p class="font-black uppercase text-sm text-gray-800">{{ p.name }}</p>
+                                <p class="text-[10px] text-gray-400 uppercase font-bold">{{ p.real_team }}</p>
+                            </td>
+                            <td class="p-6 text-center font-mono font-black text-green-600 text-lg">
+                                {{ p.quotation }}
+                            </td>
+                            <td class="p-6 text-right">
+                                <button @click="deletePlayer(p)" class="text-red-500 hover:text-red-700 font-black uppercase text-[10px] border border-red-100 px-4 py-2 rounded-xl hover:bg-red-50 transition">Elimina</button>
+                            </td>
                         </tr>
                     </tbody>
                 </table>
