@@ -105,7 +105,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/lineup', [LineupController::class, 'index'])->name('lineup.index');
     Route::post('/lineup', [LineupController::class, 'store'])->name('lineup.store');
     Route::post('/market/sessions', [MarketController::class, 'storeSession'])->name('market.sessions.store');
-    Route::post('/market/close-all/{league}', [MarketController::class, 'closeMarketNow'])->name('market.close-all');
+    Route::post('/market/close-all', [MarketController::class, 'closeMarketNow'])->name('market.close-all');
     Route::post('/leagues/{league}/update-market', [LeagueController::class, 'updateMarket'])->name('leagues.market.update');
 
     // PROFILO
