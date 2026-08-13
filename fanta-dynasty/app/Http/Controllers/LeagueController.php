@@ -63,5 +63,40 @@ class LeagueController extends Controller
     public function create() { return Inertia::render('Leagues/Create'); }
     public function join() { return Inertia::render('Leagues/Join'); }
     public function updateMarket(Request $request, League $league) { $league->update(['market_start_at' => $request->market_start_at, 'market_end_at' => $request->market_end_at]); $league->save(); return back(); }
-    public function kickParticipant(LeagueParticipant $p) { $l = League::find($p->league_id); if($l->admin_id !== auth()->id()) return back(); DB::transaction(function() use($p,$l){ Roster::where('league_id', $l->id)->where('user_id', $p->user_id)->delete(); $p->delete(); }); return back(); }
+    public function kickParticipant(LeagueParticipant $participant)
+    {
+        $user = auth()->user();
+        
+        // Carichiamo la lega associata al partecipante
+        $league = League::find($participant->league_id);
+
+        // Controllo di sicurezza: se la lega non esiste o non sei l'admin, blocca
+        if (!$league || $league->admin_id !== $user->id) {
+            return back()->withErrors(['error' => 'Azione non autorizzata o lega non trovata.']);
+        }
+
+        // Impedisci all'admin di espellere se stesso
+        if ($participant->user_id === $user->id) {
+            return back()->withErrors(['error' => 'Non puoi espellere te stesso.']);
+        }
+
+        DB::transaction(function () use ($participant, $league) {
+            // 1. Rimuoviamo i suoi calciatori
+            Roster::where('league_id', $league->id)
+                ->where('user_id', $participant->user_id)
+                ->delete();
+
+            // 2. Rimuoviamo le sue formazioni
+            $lineupIds = Lineup::where('league_id', $league->id)
+                ->where('user_id', $participant->user_id)
+                ->pluck('id');
+            LineupDetail::whereIn('lineup_id', $lineupIds)->delete();
+            Lineup::whereIn('id', $lineupIds)->delete();
+
+            // 3. Rimuoviamo la sua partecipazione
+            $participant->delete();
+        });
+
+        return back()->with('message', 'Squadra espulsa correttamente.');
+    }
 }
