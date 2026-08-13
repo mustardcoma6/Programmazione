@@ -9,8 +9,12 @@ const isAdminView = (league) => league.admin_id === user.id;
 
 // Logica per espellere
 const kickParticipant = (p) => {
-    if (confirm(`⚠️ ATTENZIONE PRES!\n\nVuoi espellere la squadra "${p.team_name}"?\nTutti i suoi calciatori verranno svincolati e la partecipazione annullata. Azione irreversibile.`)) {
-        useForm({}).delete(route('admin.participant.kick', p.id), { preserveScroll: true });
+    if (confirm(`⚠️ ATTENZIONE PRES!\n\nVuoi espellere la squadra "${p.team_name}"?\nAzione irreversibile.`)) {
+        // Usiamo router.delete direttamente per maggiore velocità
+        router.delete(route('admin.participant.kick', { participant: p.id }), {
+            preserveScroll: true,
+            onSuccess: () => alert("Utente rimosso con successo.")
+        });
     }
 };
 </script>
