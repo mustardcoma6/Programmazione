@@ -9,15 +9,17 @@ return new class extends Migration
     /**
      * Run the migrations.
      */
-    public function up(): void {
-    Schema::create('market_value_history', function (Blueprint $table) {
-        $table->id();
-        $table->foreignId('league_id')->constrained()->onDelete('cascade');
-        $table->foreignId('user_id')->constrained()->onDelete('cascade');
-        $table->decimal('value', 10, 2);
-        $table->date('recorded_at'); // La data della rilevazione
-        $table->timestamps();
-    });
+    public function up(): void
+    {
+        Schema::create('market_value_histories', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('league_id')->constrained()->onDelete('cascade');
+            $table->foreignId('user_id')->constrained()->onDelete('cascade');
+            $table->decimal('value', 10, 2);
+            $table->date('recorded_at');
+            $table->timestamps();
+        });
+    }
 }
 
     /**
