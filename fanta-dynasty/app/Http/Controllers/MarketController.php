@@ -74,5 +74,43 @@ class MarketController extends Controller
     public function history() { $p = LeagueParticipant::where('user_id', auth()->id())->first(); return Inertia::render('Market/History', ['league' => League::find($p->league_id), 'movements' => Roster::where('league_id', $p->league_id)->with(['player', 'user'])->orderBy('created_at', 'desc')->get()]); }
     public function financesPage() { $u = auth()->user(); $p = LeagueParticipant::where('user_id', $u->id)->first(); if (!$p) return redirect()->route('dashboard'); $euroValues = ['SAO PAULO' => 68.12, 'ATLETICO G MINEIRO' => 59.54, 'SANTOS' => 56.94, 'FLAMENGO' => 45.24, 'CRUZEIRO E.C.' => 40.82, 'PALMEIRAS' => 39.00, 'CORINTHIANS' => 39.00, 'VASCO DE GAMA' => 33.28, 'BOTAFOGO' => 33.02, 'FLUMINENSE' => 30.94]; $all = LeagueParticipant::where('league_id', $p->league_id)->with('user')->get(); foreach ($all as $t) { $proV = DB::table('rosters')->join('real_players', 'rosters.real_player_id', '=', 'real_players.id')->where('rosters.user_id', $t->user_id)->where('rosters.league_id', $p->league_id)->sum('real_players.quotation'); $priV = DB::table('primavera_rosters')->join('real_players', 'primavera_rosters.real_player_id', '=', 'real_players.id')->where('primavera_rosters.user_id', $t->user_id)->where('primavera_rosters.league_id', $p->league_id)->sum('real_players.quotation'); $t->total_quotation_value = (int)$proV + (int)$priV; $t->euro_value = $euroValues[strtoupper(trim($t->team_name))] ?? 0.00; } $hist = MarketValueHistory::where('user_id', $u->id)->orderBy('recorded_at', 'asc')->get(['value', 'recorded_at']); return Inertia::render('Societa/Finances', ['myData' => $p, 'rankingAsset' => $all->sortByDesc('total_quotation_value')->values()->all(), 'rankingEuro' => $all->sortByDesc('euro_value')->values()->all(), 'myEuroValue' => $euroValues[strtoupper(trim($p->team_name))] ?? 0.00, 'history' => $hist]); }
     public function primaveraPage() { $u = auth()->user(); $p = LeagueParticipant::where('user_id', $u->id)->first(); $players = PrimaveraRoster::where('league_id', $p->league_id)->where('user_id', $u->id)->with('player')->get(); return Inertia::render('Societa/Primavera', ['myData' => $p, 'primaveraPlayers' => $players]); }
-    private function processExpiredAuctions($lid) { $now = Carbon::now('Europe/Rome'); DB::transaction(function () use ($lid, $now) { $ex = Auction::where('league_id', $lid)->where('is_finished', false)->where('expires_at', '<=', $now)->lockForUpdate()->get(); foreach ($ex as $auc) { Roster::create(['league_id' => $auc->league_id, 'user_id' => $auc->user_id, 'real_player_id' => $auc->real_player_id, 'purchase_price' => $auc->current_bid, 'contract_years' => 1]); $p = LeagueParticipant::where('league_id', $auc->league_id)->where('user_id', $auc->user_id)->first(); if($p) $p->decrement('remaining_budget', $auc->current_bid); $auc->update(['is_finished' => true]); } }); }
+    private function processExpiredAuctions($leagueId) {
+        $now = Carbon::now('Europe/Rome');
+        
+        DB::transaction(function () use ($leagueId, $now) {
+            // Prendiamo le aste scadute
+            $expired = Auction::where('league_id', $leagueId)
+                ->where('is_finished', false)
+                ->where('expires_at', '<=', $now)
+                ->lockForUpdate()
+                ->get();
+
+            foreach ($expired as $auc) {
+                // 1. Assegnazione al Roster (con 1 anno di contratto base)
+                Roster::create([
+                    'league_id' => $auc->league_id, 
+                    'user_id' => $auc->user_id, 
+                    'real_player_id' => $auc->real_player_id, 
+                    'purchase_price' => $auc->current_bid, 
+                    'contract_years' => 1
+                ]);
+
+                // 2. Troviamo il partecipante per scalare i budget
+                $p = LeagueParticipant::where('league_id', $auc->league_id)
+                    ->where('user_id', $auc->user_id)
+                    ->first();
+
+                if ($p) {
+                    // SCALANO I CREDITI
+                    $p->decrement('remaining_budget', $auc->current_bid);
+                    
+                    // SCALA AUTOMATICAMENTE 1 ANNO DAL BUDGET TOTALE (Punto richiesto)
+                    $p->decrement('years_budget', 1);
+                }
+
+                // 3. Chiudiamo l'asta
+                $auc->update(['is_finished' => true]);
+            }
+        });
+    }
 }
