@@ -76,14 +76,65 @@ const isAdmin = computed(() => hasLeague.value && leagues.value[0]?.admin_id ===
                     </div>
                 </div>
             </div>
-            <!-- MOBILE MENU -->
+            <!-- MOBILE MENU (Corretto e Completo) -->
             <div :class="{'block': showingNavigationDropdown, 'hidden': !showingNavigationDropdown}" class="sm:hidden bg-white border-t border-gray-100 shadow-2xl overflow-y-auto max-h-[90vh]">
                 <div class="pt-2 pb-3 space-y-1">
                     <ResponsiveNavLink :href="route('dashboard')" :active="route().current('dashboard')">HOME</ResponsiveNavLink>
+                    
                     <template v-if="hasLeague">
-                        <button @click="openSocieta = !openSocieta" class="w-full text-left pl-3 pr-4 py-2 font-bold text-gray-600 uppercase flex justify-between">Società <svg class="h-4 w-4" :class="{'rotate-180': openSocieta}" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M19 9l-7 7-7-7" /></svg></button>
-                        <div v-show="openSocieta" class="bg-gray-50"><ResponsiveNavLink :href="route('roster.index')">La mia Rosa</ResponsiveNavLink></div>
+                        <!-- TENDINA SOCIETÀ -->
+                        <button @click="openSocieta = !openSocieta" class="w-full text-left pl-3 pr-4 py-2 font-bold text-gray-600 uppercase flex justify-between items-center">
+                            SOCIETÀ 
+                            <svg class="h-4 w-4 transform transition-transform" :class="{'rotate-180': openSocieta}" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M19 9l-7 7-7-7" /></svg>
+                        </button>
+                        <div v-show="openSocieta" class="bg-gray-50 pl-4">
+                            <ResponsiveNavLink :href="route('roster.index')">La mia Rosa</ResponsiveNavLink>
+                            <ResponsiveNavLink :href="route('roster.lineup')">Formazione</ResponsiveNavLink>
+                            <ResponsiveNavLink :href="route('roster.finances')">Finanze</ResponsiveNavLink>
+                            <ResponsiveNavLink :href="route('roster.primavera')">Primavera</ResponsiveNavLink>
+                        </div>
+
+                        <!-- TENDINA LEGA -->
+                        <button @click="openLega = !openLega" class="w-full text-left pl-3 pr-4 py-2 font-bold text-gray-600 uppercase flex justify-between items-center">
+                            LEGA 
+                            <svg class="h-4 w-4 transform transition-transform" :class="{'rotate-180': openLega}" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M19 9l-7 7-7-7" /></svg>
+                        </button>
+                        <div v-show="openLega" class="bg-gray-50 pl-4">
+                            <ResponsiveNavLink :href="route('societa.index')">Anagrafe</ResponsiveNavLink>
+                            <ResponsiveNavLink :href="route('teams.index')">Rose Avversarie</ResponsiveNavLink>
+                            <ResponsiveNavLink :href="route('league.ranking')">Ranking</ResponsiveNavLink>
+                            <ResponsiveNavLink :href="route('players.index')">Svincolati</ResponsiveNavLink>
+                            <ResponsiveNavLink :href="route('league.trophies')">Sala Trofei</ResponsiveNavLink>
+                        </div>
+
+                        <!-- TENDINA MERCATO -->
+                        <button @click="openMercato = !openMercato" class="w-full text-left pl-3 pr-4 py-2 font-bold text-gray-600 uppercase flex justify-between items-center">
+                            CALCIOMERCATO 
+                            <svg class="h-4 w-4 transform transition-transform" :class="{'rotate-180': openMercato}" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M19 9l-7 7-7-7" /></svg>
+                        </button>
+                        <div v-show="openMercato" class="bg-gray-50 pl-4">
+                            <ResponsiveNavLink :href="route('market.auctions')">Aste e Scambi</ResponsiveNavLink>
+                            <ResponsiveNavLink :href="route('market.history')">Cronologia</ResponsiveNavLink>
+                        </div>
                     </template>
+
+                    <ResponsiveNavLink :href="route('history.index')" :active="route().current('history.index')">STORIA</ResponsiveNavLink>
+
+                    <!-- SEZIONE ADMIN (Solo se l'utente è Admin) -->
+                    <div v-if="isAdmin" class="border-t border-red-100 mt-4 pt-4">
+                        <div class="pl-3 pr-4 py-2 text-xs font-black text-red-500 uppercase">Gestione Lega</div>
+                        <ResponsiveNavLink :href="route('market.sessions')">Nuova Sessione</ResponsiveNavLink>
+                        <ResponsiveNavLink :href="route('admin.rosters')">Gestione Rose</ResponsiveNavLink>
+                        <ResponsiveNavLink :href="route('admin.credits')">Gestione Budget</ResponsiveNavLink>
+                        <ResponsiveNavLink :href="route('admin.finances')">Gestione Finanze</ResponsiveNavLink>
+                    </div>
+
+                    <!-- SEZIONE UTENTE (Profilo ed Esci) -->
+                    <div class="border-t border-gray-200 mt-4 pt-4 pb-1">
+                        <div class="pl-3 pr-4 py-2 text-xs font-black text-gray-400 uppercase">{{ user.name }}</div>
+                        <ResponsiveNavLink :href="route('profile.edit')">Profilo</ResponsiveNavLink>
+                        <ResponsiveNavLink :href="route('logout')" method="post" as="button">Esci</ResponsiveNavLink>
+                    </div>
                 </div>
             </div>
         </nav>
