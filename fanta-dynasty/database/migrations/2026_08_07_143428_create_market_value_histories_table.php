@@ -11,6 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // Ho messo il nome al PLURALE come richiesto dall'errore
         Schema::create('market_value_histories', function (Blueprint $table) {
             $table->id();
             $table->foreignId('league_id')->constrained()->onDelete('cascade');
@@ -20,13 +21,12 @@ return new class extends Migration
             $table->timestamps();
         });
     }
-}
 
     /**
      * Reverse the migrations.
      */
     public function down(): void
     {
-        Schema::dropIfExists('market_value_history');
+        Schema::dropIfExists('market_value_histories');
     }
 };
