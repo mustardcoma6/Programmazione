@@ -39,6 +39,23 @@ class LeagueController extends Controller
             $stats = ['topPlayer' => $topSigning ? $topSigning->player->name : 'Nessuno', 'topPrice' => $topSigning ? $topSigning->purchase_price : 0, 'rank' => $creditRank, 'generalRank' => $generalRank, 'totalParticipants' => count($allParticipants)];
         }
         return Inertia::render('Dashboard', ['leagues' => $leagues, 'myData' => $myData, 'myPlayers' => $myPlayers, 'currentLineup' => $currentLineup, 'allParticipants' => $allParticipants, 'isMarketOpen' => (bool)$isMarketOpen, 'stats' => $stats]);
+        // ... altri import in alto
+use App\Models\LeagueParticipant;
+
+public function index() // o il nome della tua funzione
+{
+    $user = auth()->user();
+    
+    // Prendiamo la classifica aggiornata
+    $classifica = LeagueParticipant::with('user')
+        ->orderBy('total_points', 'desc')
+        ->get();
+
+    return Inertia::render('Dashboard', [
+        'classifica' => $classifica,
+        // ... gli altri dati che avevi già (es. 'auth', 'leagues', ecc.)
+    ]);
+}
     }
 
     public function rankingIndex()
@@ -63,6 +80,25 @@ class LeagueController extends Controller
     public function create() { return Inertia::render('Leagues/Create'); }
     public function join() { return Inertia::render('Leagues/Join'); }
     public function updateMarket(Request $request, League $league) { $league->update(['market_start_at' => $request->market_start_at, 'market_end_at' => $request->market_end_at]); $league->save(); return back(); }
+    // Per vedere la pagina con il modulo
+    public function editRankings() {
+    $participants = \App\Models\LeagueParticipant::with('user')->get();
+    return inertia('Admin/Rankings', ['participants' => $participants]);
+    }
+
+// Per salvare i dati che scriverai
+public function updateRankings(Request $request) {
+    foreach ($request->rankings as $data) {
+        $participant = \App\Models\LeagueParticipant::find($data['id']);
+        if ($participant) {
+            $participant->update([
+                'total_points' => $data['total_points'],
+                'games_played' => $data['games_played'],
+            ]);
+        }
+    }
+    return redirect()->back()->with('message', 'Classifica aggiornata!');
+}
     public function kickParticipant(LeagueParticipant $participant)
     {
         $user = auth()->user();
@@ -99,4 +135,7 @@ class LeagueController extends Controller
 
         return back()->with('message', 'Squadra espulsa correttamente.');
     }
+    
+    
+    
 }
