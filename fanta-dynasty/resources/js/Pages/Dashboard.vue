@@ -14,14 +14,11 @@ const props = defineProps({
     classifica: Array 
 });
 
-// Manteniamo solo la logica per il consiglio del Pres
+// Consiglio del Pres dinamico
 const strategyAdvice = computed(() => {
     if (!props.myData) return "Benvenuto Pres!";
-    
-    // Calcolo rapido per il consiglio basato sui giocatori in rosa
     const countA = props.myPlayers ? props.myPlayers.filter(p => p.player?.role === 'A').length : 0;
     if (countA < 6) return `Rosa in costruzione. Ti mancano delle punte per completare il reparto!`;
-    
     return "Rosa al completo. Pensa solo alla formazione e alla prossima giornata!";
 });
 </script>
@@ -52,12 +49,22 @@ const strategyAdvice = computed(() => {
                     </div>
                 </div>
 
-                <!-- 2. BANNER PATRIMONIO -->
+                <!-- 2. BANNER PATRIMONIO (Con Codice Invito Ripristinato) -->
                 <div v-if="leagues && leagues.length > 0 && myData" class="bg-white p-8 shadow-xl rounded-[2.5rem] border-l-[16px] border-indigo-600">
                     <div class="flex flex-col lg:flex-row justify-between items-center gap-8">
                         <div class="flex-1 text-center lg:text-left">
                             <h3 class="text-4xl font-black uppercase text-gray-900 tracking-tight mb-2">{{ myData.team_name }}</h3>
                             <p class="text-gray-400 font-bold text-sm uppercase italic">Lega: {{ leagues[0].name }}</p>
+                            
+                            <!-- PILLS: Mercato e Codice Invito -->
+                            <div class="mt-4 flex flex-wrap justify-center lg:justify-start gap-3">
+                                <div class="px-4 py-1.5 rounded-full text-[10px] font-black uppercase border bg-green-50 text-green-600 border-green-200">
+                                    Lega Attiva
+                                </div>
+                                <div class="px-4 py-1.5 bg-yellow-50 border border-yellow-200 rounded-full text-[10px] font-mono font-bold text-yellow-700 uppercase">
+                                    Codice Invito: {{ leagues[0].invite_code }}
+                                </div>
+                            </div>
                         </div>
 
                         <div class="flex gap-4 font-mono font-black">
@@ -65,7 +72,7 @@ const strategyAdvice = computed(() => {
                                 <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Crediti</p>
                                 <p class="text-3xl text-gray-900">{{ myData.remaining_budget }}</p>
                             </div>
-                            <div class="bg-indigo-600 p-6 rounded-3xl text-center w-32 shadow-lg shadow-indigo-200 text-white">
+                            <div class="bg-indigo-600 p-6 rounded-3xl text-center w-32 shadow-lg shadow-indigo-200 text-white border-b-4 border-indigo-800">
                                 <p class="text-[10px] font-black text-indigo-200 uppercase tracking-widest">Anni</p>
                                 <p class="text-3xl">{{ myData.years_budget }}</p>
                             </div>
@@ -76,25 +83,25 @@ const strategyAdvice = computed(() => {
                 <!-- 3. GRIGLIA A DUE COLONNE -->
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
                     
-                    <!-- COLONNA SINISTRA (Grande): Consigli -->
+                    <!-- COLONNA SINISTRA (Grande) -->
                     <div class="lg:col-span-2 space-y-8">
                         
-                        <!-- ANALISI E CONSIGLI -->
+                        <!-- ANALISI E CONSIGLI (Dati Top Player Corretti) -->
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div class="bg-white p-8 rounded-[2rem] shadow-lg border border-gray-100 flex flex-col justify-center text-center">
-                                <h4 class="text-xs font-black uppercase text-gray-400 mb-2 tracking-widest">💎 Top Player in Rosa</h4>
+                                <h4 class="text-[10px] font-black uppercase text-blue-400 mb-2 tracking-widest">💎 Top Player in Rosa</h4>
                                 <p class="text-2xl font-black text-gray-900 uppercase tracking-tighter">{{ stats?.topPlayer || 'Nessuno' }}</p>
-                                <p class="text-4xl font-mono font-black text-green-500 mt-2">{{ stats?.topPrice || 0 }} cr</p>
+                                <p class="text-4xl font-mono font-black text-green-500 mt-2">{{ stats?.topPrice || 0 }} <span class="text-xs uppercase">cr</span></p>
                             </div>
                             <div class="bg-indigo-900 p-8 rounded-[2rem] shadow-xl text-white border-b-8 border-indigo-500 flex flex-col justify-center">
-                                <h4 class="text-xs font-black uppercase text-indigo-400 mb-3 tracking-widest">💡 Consiglio del Pres</h4>
+                                <h4 class="text-[10px] font-black uppercase text-indigo-400 mb-3 tracking-widest">💡 Consiglio del Pres</h4>
                                 <p class="text-base font-medium italic leading-relaxed text-indigo-50">"{{ strategyAdvice }}"</p>
                             </div>
                         </div>
 
-                        <!-- Spazio vuoto o per future sezioni -->
+                        <!-- Spazio decorativo -->
                         <div class="p-12 text-center border-2 border-dashed border-gray-100 rounded-[3rem]">
-                            <p class="text-gray-300 font-bold uppercase text-xs tracking-widest text-center">Area Direzionale - FantaGest</p>
+                            <p class="text-gray-300 font-bold uppercase text-[10px] tracking-[0.5em]">Area Direzionale - FantaGest</p>
                         </div>
                     </div>
 
@@ -133,7 +140,6 @@ const strategyAdvice = computed(() => {
                             </div>
                         </div>
                     </div>
-
                 </div>
 
             </div>
