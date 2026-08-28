@@ -127,7 +127,10 @@ const isAdmin = computed(() => hasLeague.value && leagues.value[0]?.admin_id ===
                         <ResponsiveNavLink :href="route('admin.rosters')">Gestione Rose</ResponsiveNavLink>
                         <ResponsiveNavLink :href="route('admin.credits')">Gestione Budget</ResponsiveNavLink>
                         <ResponsiveNavLink :href="route('admin.finances')">Gestione Finanze</ResponsiveNavLink>
-                    </div>
+                        <ResponsiveNavLink :href="route('admin.rankings.edit')" :active="route().current('admin.rankings.edit')">
+         ⚙️ Gestione Classifica
+    </ResponsiveNavLink>
+                     </div>
 
                     <!-- SEZIONE UTENTE (Profilo ed Esci) -->
                     <div class="border-t border-gray-200 mt-4 pt-4 pb-1">

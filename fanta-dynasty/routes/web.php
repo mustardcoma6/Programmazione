@@ -37,6 +37,12 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/admin/gestione-listone', [PlayerController::class, 'adminIndex'])->name('admin.players');
     Route::get('/admin/gestione-finanze', [LeagueController::class, 'manageFinances'])->name('admin.finances');
     Route::get('/admin/gestione-primavera', [LeagueController::class, 'managePrimavera'])->name('admin.primavera');
+    Route::get('/admin/classifica', [LeagueController::class, 'editRankings'])->name('admin.rankings.edit');
+    Route::post('/admin/classifica', [LeagueController::class, 'updateRankings'])->name('admin.rankings.update');
+    Route::get('/admin/classifica', [LeagueController::class, 'editRankings'])->name('admin.rankings.edit');
+    Route::post('/admin/classifica', [LeagueController::class, 'updateRankings'])->name('admin.rankings.update');
+  
+    
 
     // AZIONI
     Route::post('/admin/players/bulk', [PlayerController::class, 'bulkImport'])->name('admin.players.bulk-import');

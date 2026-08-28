@@ -84,10 +84,16 @@ class LeagueController extends Controller
     }
 
     // GESTIONE CLASSIFICA (ADMIN)
-    public function editRankings() {
-        $l = auth()->user()->leagues()->first();
-        $participants = LeagueParticipant::where('league_id', $l->id)->with('user')->get();
-        return Inertia::render('Admin/Rankings', ['participants' => $participants]);
+         public function editRankings() {
+    $l = auth()->user()->leagues()->first();
+    $participants = LeagueParticipant::where('league_id', $l->id)
+        ->with('user')
+        ->get();
+        
+    // Nota il percorso: Admin/RankingsEdit
+    return Inertia::render('Admin/RankingsEdit', [
+        'participants' => $participants
+      ]);
     }
 
     public function updateRankings(Request $request) {
