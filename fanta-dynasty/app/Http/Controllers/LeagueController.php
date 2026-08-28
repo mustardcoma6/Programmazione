@@ -17,83 +17,44 @@ class LeagueController extends Controller
         $leagues = $user->leagues()->get(); 
         $firstLeague = $leagues->first();
         
-        $myData = null; 
-        $myPlayers = []; 
-        $currentLineup = null; 
-        $allParticipants = []; 
-        $isMarketOpen = false; 
-        $stats = null;
+        $myData = null; $myPlayers = []; $currentLineup = null; $allParticipants = []; $isMarketOpen = false; $stats = null;
         $classifica = []; 
 
         if ($firstLeague) {
             $myData = LeagueParticipant::where('league_id', $firstLeague->id)->where('user_id', $user->id)->first();
             $myPlayers = Roster::where('league_id', $firstLeague->id)->where('user_id', $user->id)->with('player')->get();
             $currentLineup = Lineup::where('league_id', $firstLeague->id)->where('user_id', $user->id)->where('matchday', 1)->with('details.player')->first();
-            $allParticipants = LeagueParticipant::where('league_id', $firstLeague->id)->orderBy('remaining_budget', 'desc')->get();
-            $isMarketOpen = MarketSession::where('league_id', $firstLeague->id)->where('start_at', '<=', now())->where('end_at', '>=', now())->exists();
-
-            // CLASSIFICA CAMPIONATO (Dinamica dal DB)
+            $allParticipants = LeagueParticipant::where('league_id', $firstLeague->id)->get();
+            
+            // ORDINAMENTO CAMPIONATO: Punti Classifica poi Punteggio Somma Voti
             $classifica = LeagueParticipant::where('league_id', $firstLeague->id)
-    ->with('user')
-    ->orderBy('league_points', 'desc')
-    ->orderBy('total_points', 'desc')
-    ->get();
+                ->with('user')
+                ->orderBy('league_points', 'desc')
+                ->orderBy('total_points', 'desc')
+                ->get();
 
-            // Stats
-            $topSigning = Roster::where('user_id', $user->id)->where('league_id', $firstLeague->id)->with('player')->orderBy('purchase_price', 'desc')->first();
-            $creditRank = LeagueParticipant::where('league_id', $firstLeague->id)->where('remaining_budget', '>', $myData->remaining_budget)->count() + 1;
-
-            $pos = $classifica->search(function($item) use ($user) {
-                return $item->user_id === $user->id;
-            });
-            $generalRank = ($pos !== false) ? ($pos + 1) : '-';
-
-            $stats = [
-                'topPlayer' => $topSigning ? $topSigning->player->name : 'Nessuno', 
-                'topPrice' => $topSigning ? $topSigning->purchase_price : 0, 
-                'rank' => $creditRank, 
-                'generalRank' => $generalRank, 
-                'totalParticipants' => count($allParticipants)
-            ];
+            $stats = ['generalRank' => ($classifica->search(fn($i) => $i->user_id === $user->id) + 1)];
         }
 
         return Inertia::render('Dashboard', [
-            'leagues' => $leagues, 
-            'myData' => $myData, 
-            'myPlayers' => $myPlayers, 
-            'currentLineup' => $currentLineup, 
-            'allParticipants' => $allParticipants, 
-            'isMarketOpen' => (bool)$isMarketOpen, 
-            'stats' => $stats,
-            'classifica' => $classifica 
-        ]);
-    }
-
-    // --- GESTIONE CAMPIONATO (ADMIN) ---
-    public function editCampionato() 
-    {
-        $l = auth()->user()->leagues()->first();
-        $participants = LeagueParticipant::where('league_id', $l->id)->with('user')->get();
-        
-        return Inertia::render('Admin/CampionatoEdit', [
-            'participants' => $participants
+            'leagues' => $leagues, 'myData' => $myData, 'myPlayers' => $myPlayers, 
+            'currentLineup' => $currentLineup, 'allParticipants' => $allParticipants, 
+            'stats' => $stats, 'classifica' => $classifica 
         ]);
     }
 
     public function updateCampionato(Request $request) 
     {
         foreach ($request->classifica as $data) {
-    $participant = LeagueParticipant::find($data['id']);
-    if ($participant) {
-        $participant->update([
-            'league_points' => $data['league_points'], // Nuovo!
-            'total_points' => $data['total_points'],
-            'games_played' => $data['games_played'],
-        ]);
+            LeagueParticipant::where('id', $data['id'])->update([
+                'league_points' => $data['league_points'],
+                'total_points' => $data['total_points'],
+                'games_played' => $data['games_played'],
+            ]);
+        }
+        return redirect()->back()->with('message', 'Aggiornato!');
     }
 }
-        return redirect()->back()->with('message', 'Classifica Campionato aggiornata!');
-    }
 
     // --- RANKING STATICO (Il tuo vecchio ranking) ---
     public function rankingIndex()
