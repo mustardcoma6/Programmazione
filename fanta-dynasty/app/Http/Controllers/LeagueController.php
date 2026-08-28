@@ -26,7 +26,6 @@ class LeagueController extends Controller
             $currentLineup = Lineup::where('league_id', $firstLeague->id)->where('user_id', $user->id)->where('matchday', 1)->with('details.player')->first();
             $allParticipants = LeagueParticipant::where('league_id', $firstLeague->id)->get();
             
-            // ORDINAMENTO CAMPIONATO: Punti Classifica poi Punteggio Somma Voti
             $classifica = LeagueParticipant::where('league_id', $firstLeague->id)
                 ->with('user')
                 ->orderBy('league_points', 'desc')
@@ -43,6 +42,13 @@ class LeagueController extends Controller
         ]);
     }
 
+    public function editCampionato() 
+    {
+        $l = auth()->user()->leagues()->first();
+        $participants = LeagueParticipant::where('league_id', $l->id)->with('user')->get();
+        return Inertia::render('Admin/CampionatoEdit', ['participants' => $participants]);
+    }
+
     public function updateCampionato(Request $request) 
     {
         foreach ($request->classifica as $data) {
@@ -54,9 +60,7 @@ class LeagueController extends Controller
         }
         return redirect()->back()->with('message', 'Aggiornato!');
     }
-}
 
-    // --- RANKING STATICO (Il tuo vecchio ranking) ---
     public function rankingIndex()
     {
         $rankingData = [
@@ -69,7 +73,6 @@ class LeagueController extends Controller
         return Inertia::render('Lega/Ranking', ['ranking' => $rankingData, 'lastUpdate' => '27/08/2024']);
     }
 
-    // --- ALTRI METODI DI GESTIONE ---
     public function manageFinances() { $l = auth()->user()->leagues()->first(); $p = LeagueParticipant::where('league_id', $l->id)->with('user')->get(); return Inertia::render('Admin/Finances', ['league' => $l, 'participants' => $p, 'stats' => ['totalCredits' => $p->sum('remaining_budget'), 'totalYears' => $p->sum('years_budget'), 'avgCredits' => round($p->avg('remaining_budget'))]]); }
     public function managePrimavera() { $l = auth()->user()->leagues()->first(); $teams = LeagueParticipant::where('league_id', $l->id)->with('user')->get(); foreach ($teams as $t) { $t->primavera_players = PrimaveraRoster::where('league_id', $l->id)->where('user_id', $t->user_id)->with('player')->get(); } $sold = array_merge(Roster::where('league_id', $l->id)->pluck('real_player_id')->toArray(), PrimaveraRoster::where('league_id', $l->id)->pluck('real_player_id')->toArray()); $available = RealPlayer::whereNotIn('id', $sold)->orderBy('role', 'desc')->get(); return Inertia::render('Admin/Primavera', ['league' => $l, 'teams' => $teams, 'availablePlayers' => $available]); }
     public function assignPrimavera(Request $request) { PrimaveraRoster::create(['league_id' => auth()->user()->leagues()->first()->id, 'user_id' => $request->user_id, 'real_player_id' => $request->player_id, 'purchase_price' => $request->price]); $p = LeagueParticipant::where('user_id', $request->user_id)->first(); $p->decrement('remaining_budget', $request->price); return back(); }
@@ -103,4 +106,4 @@ class LeagueController extends Controller
         });
         return back()->with('message', 'Squadra espulsa.');
     }
-}
+} 
