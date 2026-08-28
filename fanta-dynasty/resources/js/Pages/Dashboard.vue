@@ -65,78 +65,75 @@ const getRoleClass = (role) => {
         <div class="py-10 px-4">
             <div class="max-w-7xl mx-auto space-y-8">
                 
-                <!-- INTESTAZIONE -->
+                <!-- 1. INTESTAZIONE (Saluto e Ranking) -->
                 <div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 px-2">
-                    <div>
-                        <h1 class="text-6xl font-black text-gray-900 tracking-tighter italic">Benvenuto Pres!</h1>
-                        <p class="text-xs text-blue-600 font-bold uppercase tracking-[0.4em] mt-2 ml-1">Dashboard Direzionale</p>
-                    </div>
-                    <div v-if="stats" class="flex gap-4">
-                        <!-- Box Ranking Generale -->
-                        <div class="bg-indigo-600 text-white px-6 py-3 rounded-3xl shadow-xl border-b-4 border-indigo-900 text-center min-w-[120px]">
-                           <p class="text-[10px] font-black uppercase text-indigo-200 tracking-widest">Ranking</p>
-                           <p class="text-3xl font-black">{{ stats.generalRank }}°</p>
-                    </div>
-          
-                      <!-- Box Ranking Crediti (RIPRISTINATO) -->
-                      <div class="bg-gray-900 text-white px-6 py-3 rounded-3xl shadow-xl border-b-4 border-yellow-500 text-center min-w-[120px]">
-                            <p class="text-[10px] font-black uppercase text-yellow-500 tracking-widest">Ranking Crediti</p>
-                         <p class="text-3xl font-black">{{ stats.rank }}°</p>
-                           </div>
-                      </div>
+                    <!-- ... il tuo codice del saluto ... -->
                 </div>
 
-                <!-- CLASSIFICA CAMPIONATO -->
-                <div v-if="classifica && classifica.length > 0" class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
-                    <div class="bg-blue-600 px-6 py-4">
-                        <h3 class="font-black text-white uppercase italic tracking-tighter">Classifica Campionato</h3>
-                    </div>
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-left">
-                            <thead>
-                                <tr class="bg-gray-50 text-[10px] uppercase font-black text-gray-400 border-b">
-                                    <th class="px-4 py-3">Pos</th>
-                                    <th class="px-4 py-3">Squadra</th>
-                                    <th class="px-2 py-3 text-center">Punti</th>
-                                    <th class="px-2 py-3 text-center text-gray-300">G</th>
-                                    <th class="px-2 py-3 text-center text-blue-600">Punteggio</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-gray-100">
-                                <tr v-for="(squadra, index) in classifica" :key="squadra.id" class="hover:bg-blue-50 transition">
-                                    <td class="px-4 py-4 font-black text-gray-300 italic">#{{ index + 1 }}</td>
-                                    <td class="px-4 py-4 font-bold text-gray-800 uppercase tracking-tighter">{{ squadra.team_name }}</td>
-                                    <td class="px-2 py-4 text-center font-black text-gray-900 text-lg">{{ squadra.league_points }}</td>
-                                    <td class="px-2 py-4 text-center text-gray-400 text-xs">{{ squadra.games_played }}</td>
-                                    <td class="px-2 py-4 text-center font-black text-blue-600">{{ squadra.total_points }}</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
+                <!-- 2. BANNER PATRIMONIO (Sopra a tutto) -->
+                <div v-if="myData" class="bg-white p-8 shadow-xl rounded-[2.5rem] border-l-[16px] border-indigo-600">
+                    <!-- ... il tuo codice del banner (SANTOS, Crediti, Anni) ... -->
                 </div>
 
-                <!-- ALTRE SEZIONI (BANNER, CONSIGLI, CAMPO) -->
-                <div v-if="leagues && leagues.length > 0 && myData" class="space-y-8">
-                    <!-- Banner Patrimonio -->
-                    <div class="bg-white p-8 shadow-xl rounded-[2.5rem] border-l-[16px] border-indigo-600">
-                        <div class="flex flex-col lg:flex-row justify-between items-center gap-8">
-                            <div class="flex-1">
-                                <h3 class="text-4xl font-black uppercase text-gray-900 tracking-tight">{{ myData.team_name }}</h3>
-                                <p class="text-gray-400 font-bold text-sm uppercase">Lega: {{ leagues[0].name }}</p>
+                <!-- 3. GRIGLIA PRINCIPALE (Due Colonne) -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+                    
+                    <!-- COLONNA SINISTRA (Grande: Consigli, DS, Campo) -->
+                    <div class="lg:col-span-2 space-y-8">
+                        
+                        <!-- Analisi e Consigli -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <!-- ... il tuo codice dei consigli ... -->
+                        </div>
+
+                        <!-- Nota del DS (Slot Liberi) -->
+                        <div class="bg-white p-8 shadow-lg rounded-[2rem] border border-gray-100">
+                            <!-- ... il tuo codice degli slot ... -->
+                        </div>
+
+                        <!-- Campo da Gioco -->
+                        <div v-if="currentLineup" class="bg-green-700 p-8 shadow-2xl rounded-[3rem] border-[8px] border-green-800 text-white relative overflow-hidden">
+                            <!-- ... il tuo codice del campo ... -->
+                        </div>
+                    </div>
+
+                    <!-- COLONNA DESTRA (Piccola: Classifica Campionato) -->
+                    <div class="lg:col-span-1">
+                        <div v-if="classifica && classifica.length > 0" class="bg-white rounded-[2rem] shadow-xl border border-gray-100 overflow-hidden sticky top-24">
+                            <div class="bg-blue-600 px-5 py-4">
+                                <h3 class="font-black text-white uppercase italic text-xs tracking-widest text-center">Classifica Campionato</h3>
                             </div>
-                            <div class="flex gap-4 font-mono font-black">
-                                <div class="bg-gray-100 p-6 rounded-3xl text-center w-32 border">
-                                    <p class="text-[10px] text-gray-400 uppercase">Crediti</p>
-                                    <p class="text-3xl">{{ myData.remaining_budget }}</p>
-                                </div>
-                                <div class="bg-indigo-600 p-6 rounded-3xl text-center w-32 text-white shadow-lg">
-                                    <p class="text-[10px] text-indigo-200 uppercase">Anni</p>
-                                    <p class="text-3xl">{{ myData.years_budget }}</p>
-                                </div>
+                            <div class="p-0">
+                                <table class="w-full text-left">
+                                    <thead>
+                                        <tr class="bg-gray-50 text-[9px] uppercase font-black text-gray-400 border-b">
+                                            <th class="pl-4 py-3">#</th>
+                                            <th class="py-3">Squadra</th>
+                                            <th class="py-3 text-center">PT</th>
+                                            <th class="pr-4 py-3 text-center">TOT</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-gray-100">
+                                        <tr v-for="(squadra, index) in classifica" :key="squadra.id" 
+                                            :class="{'bg-blue-50/50': squadra.user_id === myData.user_id}"
+                                            class="hover:bg-gray-50 transition">
+                                            <td class="pl-4 py-3 text-[10px] font-black text-gray-300">#{{ index + 1 }}</td>
+                                            <td class="py-3">
+                                                <div class="font-bold text-gray-700 text-xs truncate max-w-[100px] uppercase">{{ squadra.team_name }}</div>
+                                            </td>
+                                            <td class="py-3 text-center font-black text-gray-900 text-sm">{{ squadra.league_points }}</td>
+                                            <td class="pr-4 py-3 text-center font-black text-blue-600 text-[11px]">{{ squadra.total_points }}</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="bg-gray-50 p-3 text-center border-t border-gray-100">
+                                <p class="text-[9px] text-gray-400 font-bold uppercase">Primo criterio: Punti / Secondo: Punteggio</p>
                             </div>
                         </div>
                     </div>
-                </div>
+
+                </div> <!-- Fine Griglia -->
 
             </div>
         </div>
