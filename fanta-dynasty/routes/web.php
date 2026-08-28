@@ -41,6 +41,8 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/admin/classifica', [LeagueController::class, 'updateRankings'])->name('admin.rankings.update');
     Route::get('/admin/classifica', [LeagueController::class, 'editRankings'])->name('admin.rankings.edit');
     Route::post('/admin/classifica', [LeagueController::class, 'updateRankings'])->name('admin.rankings.update');
+    Route::get('/admin/campionato', [LeagueController::class, 'editCampionato'])->name('admin.campionato.edit');
+    Route::post('/admin/campionato', [LeagueController::class, 'updateCampionato'])->name('admin.campionato.update');
   
     
 

@@ -1,22 +1,23 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head } from '@inertiajs/vue3';
-import { computed } from 'vue';
+import { computed } from 'vue'; // Fondamentale per i calcoli della rosa
 
+// 1. DEFINIZIONE PROPS (Tutti i dati che arrivano dal Controller)
 const props = defineProps({
-    leagues: Array, 
-    myData: Object, 
-    myPlayers: Array, 
-    allParticipants: Array, 
+    leagues: Object,
+    myData: Object,
+    myPlayers: Array,
     currentLineup: Object,
-    isMarketOpen: Boolean, 
-    stats: Object
+    allParticipants: Array,
+    isMarketOpen: Boolean,
+    stats: Object,
+    classifica: Array 
 });
 
-// Limiti Ruoli Dynasty
+// 2. LOGICA CALCOLI ROSA (DS e Strategia)
 const limits = { P: 3, D: 8, C: 8, A: 6 };
 
-// Calcolo ruoli mancanti (Logica robusta)
 const missingPlayers = computed(() => {
     const counts = { P: 0, D: 0, C: 0, A: 0 };
     if (props.myPlayers) {
@@ -36,7 +37,6 @@ const missingPlayers = computed(() => {
 
 const totalMissing = computed(() => Object.values(missingPlayers.value).reduce((a, b) => a + b, 0));
 
-// Consiglio del Pres
 const strategyAdvice = computed(() => {
     if (!props.myData || totalMissing.value === 0) return "Rosa al completo. Pensa solo alla formazione!";
     const budget = props.myData.remaining_budget;
@@ -45,7 +45,7 @@ const strategyAdvice = computed(() => {
     return `Hai circa ${avg} cr per ogni slot libero. Gestiscili con intelligenza.`;
 });
 
-// Stile Slot Liberi
+// 3. FUNZIONI STILE
 const getSlotStyle = (role) => {
     switch(role) {
         case 'P': return 'bg-yellow-50 border-yellow-400 text-yellow-700';
@@ -56,7 +56,6 @@ const getSlotStyle = (role) => {
     }
 };
 
-// Colori Ruoli in Campo
 const getRoleClass = (role) => {
     if (role === 'P') return 'role-P';
     if (role === 'D') return 'role-D';
@@ -68,11 +67,12 @@ const getRoleClass = (role) => {
 
 <template>
     <Head title="Dashboard" />
+
     <AuthenticatedLayout>
         <div class="py-10 px-4">
             <div class="max-w-7xl mx-auto space-y-8">
                 
-                <!-- INTESTAZIONE: SALUTO E RANKING -->
+                <!-- INTESTAZIONE -->
                 <div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 px-2">
                     <div>
                         <h1 class="text-6xl font-black text-gray-900 tracking-tighter italic">Benvenuto Pres!</h1>
@@ -91,7 +91,35 @@ const getRoleClass = (role) => {
                     </div>
                 </div>
 
-                <!-- SEZIONE LEGA -->
+                <!-- NUOVA SEZIONE: CLASSIFICA CAMPIONATO -->
+                <div v-if="classifica && classifica.length > 0" class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div class="bg-blue-600 px-6 py-4 flex justify-between items-center">
+                        <h3 class="font-black text-white uppercase italic tracking-tighter">Classifica Campionato</h3>
+                        <span class="text-[10px] text-blue-100 font-bold uppercase">Aggiornata Live</span>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left">
+                            <thead>
+                                <tr class="bg-gray-50 text-[10px] uppercase font-black text-gray-400 border-b">
+                                    <th class="px-6 py-3">Pos</th>
+                                    <th class="px-6 py-3">Squadra</th>
+                                    <th class="px-6 py-3 text-center">Punti</th>
+                                    <th class="px-6 py-3 text-center">Partite</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100">
+                                <tr v-for="(squadra, index) in classifica" :key="squadra.id" class="hover:bg-blue-50 transition">
+                                    <td class="px-6 py-4 font-black text-gray-300">#{{ index + 1 }}</td>
+                                    <td class="px-6 py-4 font-bold text-gray-800">{{ squadra.user.name }}</td>
+                                    <td class="px-6 py-4 text-center font-black text-blue-600 text-lg">{{ squadra.total_points }}</td>
+                                    <td class="px-6 py-4 text-center text-gray-400 text-sm">{{ squadra.games_played }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- SEZIONE LEGA (BANNER, ANALISI, CAMPO) -->
                 <div v-if="leagues && leagues.length > 0 && myData" class="space-y-8">
                     
                     <!-- BANNER PATRIMONIO -->
@@ -109,7 +137,6 @@ const getRoleClass = (role) => {
                                     </div>
                                 </div>
                             </div>
-
                             <div class="flex gap-4">
                                 <div class="bg-gray-100 p-6 rounded-3xl text-center w-40 border border-gray-200">
                                     <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Crediti</p>
@@ -123,7 +150,7 @@ const getRoleClass = (role) => {
                         </div>
                     </div>
 
-                    <!-- ANALISI E CONSIGLI -->
+                    <!-- ANALISI -->
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div class="bg-white p-8 rounded-[2rem] shadow-lg border border-gray-100 flex flex-col justify-center text-center">
                             <h4 class="text-xs font-black uppercase text-gray-400 mb-2 tracking-widest">💎 Top Player in Rosa</h4>
@@ -136,7 +163,7 @@ const getRoleClass = (role) => {
                         </div>
                     </div>
 
-                    <!-- SLOT LIBERI (RAPPORTO DS) -->
+                    <!-- SLOT LIBERI -->
                     <div class="bg-white p-8 shadow-xl rounded-[2.5rem] border border-gray-100">
                         <div class="flex items-center gap-4 mb-8">
                             <span class="text-4xl">📝</span>
@@ -145,7 +172,6 @@ const getRoleClass = (role) => {
                                 <p class="text-lg font-black text-gray-800 uppercase tracking-tight">Rosa attualmente incompleta</p>
                             </div>
                         </div>
-
                         <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
                             <div v-for="(count, role) in missingPlayers" :key="role" 
                                  class="p-6 rounded-[2rem] border-2 transition-all shadow-sm flex flex-col items-center"
@@ -164,7 +190,7 @@ const getRoleClass = (role) => {
                         </div>
                         <div class="flex justify-between items-center mb-10 relative z-10">
                             <h3 class="font-black uppercase text-2xl tracking-tighter">L'11 Titolare <span class="text-green-300 ml-4 font-mono">{{ currentLineup.module }}</span></h3>
-                            <a :href="route('lineup.index')" class="bg-green-900/50 hover:bg-green-900 px-6 py-2 rounded-2xl text-[10px] font-black tracking-widest transition border border-white/20 uppercase shadow-lg">Modifica Campo</a>
+                            <a :href="route('roster.lineup')" class="bg-green-900/50 hover:bg-green-900 px-6 py-2 rounded-2xl text-[10px] font-black tracking-widest transition border border-white/20 uppercase shadow-lg">Modifica Campo</a>
                         </div>
                         <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6 relative z-10">
                             <div v-for="detail in currentLineup.details" :key="detail.id" class="p-4 rounded-2xl bg-white/10 border border-white/10 backdrop-blur-lg text-center shadow-sm">
@@ -179,13 +205,12 @@ const getRoleClass = (role) => {
                 <div v-else class="bg-white p-20 text-center shadow-2xl rounded-[3rem] border-2 border-dashed border-indigo-200">
                     <span class="text-8xl mb-8 block">🏟️</span>
                     <h3 class="text-4xl font-black text-gray-900 uppercase tracking-tighter mb-4">Benvenuto Pres!</h3>
-                    <p class="text-gray-500 mb-12 text-xl max-w-lg mx-auto">Non sei ancora iscritto a nessuna lega. Entra nel vivo del calcio che conta.</p>
+                    <p class="text-gray-500 mb-12 text-xl max-w-lg mx-auto">Non sei ancora iscritto a nessuna lega.</p>
                     <div class="flex flex-col md:flex-row gap-6 justify-center">
-                        <a :href="route('leagues.create')" class="bg-green-600 text-white px-10 py-5 rounded-[1.5rem] font-black uppercase tracking-widest hover:bg-green-700 shadow-xl transition-transform active:scale-95">➕ Crea Lega</a>
-                        <a :href="route('leagues.join')" class="bg-orange-500 text-white px-10 py-5 rounded-[1.5rem] font-black uppercase tracking-widest hover:bg-orange-600 shadow-xl transition-transform active:scale-95">🤝 Unisciti</a>
+                        <a :href="route('leagues.create')" class="bg-green-600 text-white px-10 py-5 rounded-[1.5rem] font-black uppercase tracking-widest shadow-xl transition">➕ Crea Lega</a>
+                        <a :href="route('leagues.join')" class="bg-orange-500 text-white px-10 py-5 rounded-[1.5rem] font-black uppercase tracking-widest shadow-xl transition">🤝 Unisciti</a>
                     </div>
                 </div>
-
             </div>
         </div>
     </AuthenticatedLayout>

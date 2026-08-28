@@ -69,26 +69,48 @@ class LeagueController extends Controller
         ]);
     }
 
+    // --- IL VECCHIO RANKING (Torna come prima, così la pagina non è più bianca) ---
     public function rankingIndex()
     {
-        $l = auth()->user()->leagues()->first();
-        $rankingData = LeagueParticipant::where('league_id', $l->id)
-            ->with('user')
-            ->orderBy('total_points', 'desc')
-            ->get();
-            
+        $rankingData = [
+            ['name' => 'SANTOS', 'points' => 49], 
+            ['name' => 'BOTAFOGO', 'points' => 44], 
+            ['name' => 'PALMEIRAS', 'points' => 43], 
+            ['name' => 'ATLETICO G MINEIRO', 'points' => 36], 
+            ['name' => 'VASCO DE GAMA', 'points' => 30], 
+            ['name' => 'CORINTHIANS', 'points' => 30], 
+            ['name' => 'FLAMENGO', 'points' => 26], 
+            ['name' => 'CRUZEIRO E.C.', 'points' => 18], 
+            ['name' => 'FLUMINENSE', 'points' => 0], 
+            ['name' => 'SAO PAULO' , 'points' => 0]
+        ];
         return Inertia::render('Lega/Ranking', [
             'ranking' => $rankingData, 
-            'lastUpdate' => now()->format('d/m/Y')
+            'lastUpdate' => '27/08/2024' // o la data che preferisci
         ]);
     }
 
-    // GESTIONE CLASSIFICA (ADMIN)
-         public function editRankings() {
-    $l = auth()->user()->leagues()->first();
-    $participants = LeagueParticipant::where('league_id', $l->id)
-        ->with('user')
-        ->get();
+    // --- LA NUOVA CLASSIFICA CAMPIONATO (Gestita da te) ---
+    public function editCampionato() 
+    {
+        $l = auth()->user()->leagues()->first();
+        $participants = LeagueParticipant::where('league_id', $l->id)->with('user')->get();
+        
+        return Inertia::render('Admin/CampionatoEdit', [
+            'participants' => $participants
+        ]);
+    }
+
+    public function updateCampionato(Request $request) 
+    {
+        foreach ($request->classifica as $data) {
+            LeagueParticipant::where('id', $data['id'])->update([
+                'total_points' => $data['total_points'],
+                'games_played' => $data['games_played'],
+            ]);
+        }
+        return redirect()->back()->with('message', 'Classifica Campionato aggiornata!');
+    }
         
     // Nota il percorso: Admin/RankingsEdit
     return Inertia::render('Admin/RankingsEdit', [
