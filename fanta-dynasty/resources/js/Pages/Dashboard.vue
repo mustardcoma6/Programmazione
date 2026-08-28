@@ -90,9 +90,13 @@ const strategyAdvice = computed(() => {
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div class="bg-white p-8 rounded-[2rem] shadow-lg border border-gray-100 flex flex-col justify-center text-center">
                                 <h4 class="text-[10px] font-black uppercase text-blue-400 mb-2 tracking-widest">💎 Top Player in Rosa</h4>
-                                <p class="text-2xl font-black text-gray-900 uppercase tracking-tighter">{{ stats?.topPlayer || 'Nessuno' }}</p>
-                                <p class="text-4xl font-mono font-black text-green-500 mt-2">{{ stats?.topPrice || 0 }} <span class="text-xs uppercase">cr</span></p>
-                            </div>
+                                <p class="text-2xl font-black text-gray-900 uppercase tracking-tighter">
+    {{ stats?.topPlayer || 'Nessuno' }}
+</p>
+<p class="text-4xl font-mono font-black text-green-500 mt-2">
+    {{ stats?.topPrice || 0 }} <span class="text-xs uppercase">cr</span>
+</p>
+                                </div>
                             <div class="bg-indigo-900 p-8 rounded-[2rem] shadow-xl text-white border-b-8 border-indigo-500 flex flex-col justify-center">
                                 <h4 class="text-[10px] font-black uppercase text-indigo-400 mb-3 tracking-widest">💡 Consiglio del Pres</h4>
                                 <p class="text-base font-medium italic leading-relaxed text-indigo-50">"{{ strategyAdvice }}"</p>
