@@ -72,11 +72,18 @@ const getRoleClass = (role) => {
                         <p class="text-xs text-blue-600 font-bold uppercase tracking-[0.4em] mt-2 ml-1">Dashboard Direzionale</p>
                     </div>
                     <div v-if="stats" class="flex gap-4">
-                        <div class="bg-indigo-600 text-white px-6 py-3 rounded-3xl shadow-xl border-b-4 border-indigo-900 text-center">
-                            <p class="text-[10px] font-black uppercase text-indigo-200 tracking-widest">Ranking</p>
-                            <p class="text-3xl font-black">{{ stats.generalRank }}°</p>
-                        </div>
+                        <!-- Box Ranking Generale -->
+                        <div class="bg-indigo-600 text-white px-6 py-3 rounded-3xl shadow-xl border-b-4 border-indigo-900 text-center min-w-[120px]">
+                           <p class="text-[10px] font-black uppercase text-indigo-200 tracking-widest">Ranking</p>
+                           <p class="text-3xl font-black">{{ stats.generalRank }}°</p>
                     </div>
+          
+                      <!-- Box Ranking Crediti (RIPRISTINATO) -->
+                      <div class="bg-gray-900 text-white px-6 py-3 rounded-3xl shadow-xl border-b-4 border-yellow-500 text-center min-w-[120px]">
+                            <p class="text-[10px] font-black uppercase text-yellow-500 tracking-widest">Ranking Crediti</p>
+                         <p class="text-3xl font-black">{{ stats.rank }}°</p>
+                           </div>
+                      </div>
                 </div>
 
                 <!-- CLASSIFICA CAMPIONATO -->

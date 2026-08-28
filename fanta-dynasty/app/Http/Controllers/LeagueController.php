@@ -32,7 +32,19 @@ class LeagueController extends Controller
                 ->orderBy('total_points', 'desc')
                 ->get();
 
-            $stats = ['generalRank' => ($classifica->search(fn($i) => $i->user_id === $user->id) + 1)];
+            $posClassifica = $classifica->search(fn($i) => $i->user_id === $user->id);
+            $generalRank = ($posClassifica !== false) ? ($posClassifica + 1) : '-';
+
+
+            $creditRank = LeagueParticipant::where('league_id', $firstLeague->id)
+            ->where('remaining_budget', '>', $myData->remaining_budget)
+            ->count() + 1;
+
+            $stats = [
+                'generalRank' => $generalRank,
+                'rank' => $creditRank, // Questo è il dato che mancava!
+                'totalParticipants' => count($allParticipants)
+            ];
         }
 
         return Inertia::render('Dashboard', [
