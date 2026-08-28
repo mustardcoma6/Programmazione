@@ -92,27 +92,30 @@ const getRoleClass = (role) => {
                 </div>
 
                 <!-- NUOVA SEZIONE: CLASSIFICA CAMPIONATO -->
+                <!-- NUOVA SEZIONE: CLASSIFICA CAMPIONATO -->
                 <div v-if="classifica && classifica.length > 0" class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
                     <div class="bg-blue-600 px-6 py-4 flex justify-between items-center">
                         <h3 class="font-black text-white uppercase italic tracking-tighter">Classifica Campionato</h3>
                         <span class="text-[10px] text-blue-100 font-bold uppercase">Aggiornata Live</span>
                     </div>
                     <div class="overflow-x-auto">
-                        <table class="w-full text-left">
+                        <table class="w-full text-left border-collapse">
                             <thead>
                                 <tr class="bg-gray-50 text-[10px] uppercase font-black text-gray-400 border-b">
-                                    <th class="px-6 py-3">Pos</th>
-                                    <th class="px-6 py-3">Squadra</th>
-                                    <th class="px-6 py-3 text-center">Punti</th>
-                                    <th class="px-6 py-3 text-center">Partite</th>
+                                    <th class="px-4 py-3">Pos</th>
+                                    <th class="px-4 py-3">Squadra</th>
+                                    <th class="px-2 py-3 text-center">Punti</th>
+                                    <th class="px-2 py-3 text-center">G</th>
+                                    <th class="px-2 py-3 text-center text-blue-600">Punteggio</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-gray-100">
                                 <tr v-for="(squadra, index) in classifica" :key="squadra.id" class="hover:bg-blue-50 transition">
-                                    <td class="px-6 py-4 font-black text-gray-300">#{{ index + 1 }}</td>
-                                    <td class="px-6 py-4 font-bold text-gray-800">{{ squadra.user.name }}</td>
-                                    <td class="px-6 py-4 text-center font-black text-blue-600 text-lg">{{ squadra.total_points }}</td>
-                                    <td class="px-6 py-4 text-center text-gray-400 text-sm">{{ squadra.games_played }}</td>
+                                    <td class="px-4 py-4 font-black text-gray-300 italic">#{{ index + 1 }}</td>
+                                    <td class="px-4 py-4 font-bold text-gray-800">{{ squadra.user.name }}</td>
+                                    <td class="px-2 py-4 text-center font-black text-gray-900 text-lg">{{ squadra.league_points }}</td>
+                                    <td class="px-2 py-4 text-center text-gray-400 text-xs">{{ squadra.games_played }}</td>
+                                    <td class="px-2 py-4 text-center font-black text-blue-600">{{ squadra.total_points }}</td>
                                 </tr>
                             </tbody>
                         </table>

@@ -34,9 +34,10 @@ class LeagueController extends Controller
 
             // CLASSIFICA CAMPIONATO (Dinamica dal DB)
             $classifica = LeagueParticipant::where('league_id', $firstLeague->id)
-                ->with('user')
-                ->orderBy('total_points', 'desc')
-                ->get();
+    ->with('user')
+    ->orderBy('league_points', 'desc')
+    ->orderBy('total_points', 'desc')
+    ->get();
 
             // Stats
             $topSigning = Roster::where('user_id', $user->id)->where('league_id', $firstLeague->id)->with('player')->orderBy('purchase_price', 'desc')->first();
@@ -82,14 +83,15 @@ class LeagueController extends Controller
     public function updateCampionato(Request $request) 
     {
         foreach ($request->classifica as $data) {
-            $participant = LeagueParticipant::find($data['id']);
-            if ($participant) {
-                $participant->update([
-                    'total_points' => $data['total_points'],
-                    'games_played' => $data['games_played'],
-                ]);
-            }
-        }
+    $participant = LeagueParticipant::find($data['id']);
+    if ($participant) {
+        $participant->update([
+            'league_points' => $data['league_points'], // Nuovo!
+            'total_points' => $data['total_points'],
+            'games_played' => $data['games_played'],
+        ]);
+    }
+}
         return redirect()->back()->with('message', 'Classifica Campionato aggiornata!');
     }
 
