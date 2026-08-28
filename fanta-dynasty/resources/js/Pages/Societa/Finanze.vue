@@ -6,11 +6,10 @@ import Chart from 'chart.js/auto';
 
 // UNICO BLOCCO PROPS - RISOLVE L'ERRORE DI BUILD
 const props = defineProps({
-    myData: Object,
-    rankingAsset: Array,
-    rankingEuro: Array,
-    myEuroValue: Number,
-    history: Array 
+    leagues: Object,   // Aggiunto
+    myData: Object,    // Aggiunto
+    stats: Object,
+    message: String
 });
 
 const user = usePage().props.auth.user;

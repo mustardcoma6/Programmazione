@@ -75,66 +75,66 @@ class MarketController extends Controller
     public function financesPage()
 {
     $user = auth()->user();
-    $lp = \App\Models\LeagueParticipant::where('user_id', $user->id)->first();
-    
-    // Se non ha ancora giocato, evitiamo errori
-    if (!$lp || $lp->games_played == 0) {
+    // Dati necessari per il Layout (Menu)
+    $leagues = $user->leagues()->get();
+    $firstLeague = $leagues->first();
+    $myData = null;
+
+    if ($firstLeague) {
+        $myData = \App\Models\LeagueParticipant::where('league_id', $firstLeague->id)
+            ->where('user_id', $user->id)
+            ->first();
+    }
+
+    // Se non c'è una squadra o non ha giocato, mandiamo comunque i dati base per non far crashare il sito
+    if (!$myData || $myData->games_played == 0) {
         return Inertia::render('Societa/Finanze', [
+            'leagues' => $leagues,
+            'myData' => $myData,
             'stats' => null,
-            'message' => 'Dati insufficienti: gioca almeno una partita per vedere le proiezioni.'
+            'message' => 'Gioca almeno una partita per calcolare i valori monetari.'
         ]);
     }
 
-    // --- 1. VALORE ASSET (Basato su quotazioni) ---
+    // --- LOGICA CALCOLO (Quella corretta di prima) ---
     $roster = \App\Models\Roster::where('user_id', $user->id)->with('player')->get();
     $sommaQuotazioni = $roster->sum(fn($r) => $r->player->quotation ?? 0);
     $euroPerCredito = 0.26;
     $valoreAssetEuro = round($sommaQuotazioni * $euroPerCredito, 2);
 
-    // --- 2. FUNZIONE CALCOLO GOL (TUA SCALA) ---
-    // Creiamo una piccola funzione interna per riutilizzarla facilmente
     $calcolaGol = function($puntiMedi) {
         if ($puntiMedi < 66) return 0;
         if ($puntiMedi < 70) return 1;
-        // Da 70 in su: 2 gol base + 1 ogni 5 punti
         return 2 + floor(($puntiMedi - 70) / 5);
     };
 
-    // --- 3. TUA PERFORMANCE ---
-    $tuaMediaPunti = $lp->total_points / $lp->games_played;
+    $tuaMediaPunti = $myData->total_points / $myData->games_played;
     $tuoiGolMedi = $calcolaGol($tuaMediaPunti);
 
-    // --- 4. MEDIA GOL LEGA ---
-    $partecipanti = \App\Models\LeagueParticipant::where('league_id', $lp->league_id)->get();
+    $partecipanti = \App\Models\LeagueParticipant::where('league_id', $myData->league_id)->get();
     $totaleGolLega = 0;
     foreach ($partecipanti as $p) {
         if ($p->games_played > 0) {
-            $mediaP = $p->total_points / $p->games_played;
-            $totaleGolLega += $calcolaGol($mediaP);
+            $totaleGolLega += $calcolaGol($p->total_points / $p->games_played);
         }
     }
-    $mediaGolLega = count($partecipanti) > 0 ? ($totaleGolLega / count($partecipanti)) : 0;
-    
-    // Protezione contro divisione per zero se nessuno segna
+    $mediaGolLega = count($partecipanti) > 0 ? ($totaleGolLega / count($partecipanti)) : 1;
     if ($mediaGolLega <= 0) $mediaGolLega = 1;
 
-    // --- 5. INDEX E VALORE FINALE ---
     $indexPerformance = round($tuoiGolMedi / $mediaGolLega, 2);
     $valoreMonetarioFinale = round($valoreAssetEuro * $indexPerformance, 2);
 
-    // --- 6. SALVATAGGIO STORICO ---
+    // Salvataggio storico
     \App\Models\MarketValueHistory::updateOrCreate(
-        [
-            'user_id' => $user->id,
-            'league_id' => $lp->league_id,
-            'recorded_at' => now()->format('Y-m-d')
-        ],
+        ['user_id' => $user->id, 'league_id' => $myData->league_id, 'recorded_at' => now()->format('Y-m-d')],
         ['value' => $valoreMonetarioFinale]
     );
 
     return Inertia::render('Societa/Finanze', [
+        'leagues' => $leagues, // <--- INDISPENSABILE PER IL MENU
+        'myData' => $myData,   // <--- INDISPENSABILE PER IL MENU
         'stats' => [
-            'somma_quotazioni' => $sommaQuotazioni,
+            'somma_quotations' => $sommaQuotazioni,
             'valore_asset' => $valoreAssetEuro,
             'media_punti' => round($tuaMediaPunti, 2),
             'gol_prodotti' => $tuoiGolMedi,
