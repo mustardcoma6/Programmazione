@@ -75,7 +75,6 @@ class MarketController extends Controller
     public function financesPage()
 {
     $user = auth()->user();
-    // Dati necessari per il Layout (Menu)
     $leagues = $user->leagues()->get();
     $firstLeague = $leagues->first();
     $myData = null;
@@ -86,54 +85,49 @@ class MarketController extends Controller
             ->first();
     }
 
-    // Se non c'è una squadra o non ha giocato, mandiamo comunque i dati base per non far crashare il sito
-    if (!$myData || $myData->games_played == 0) {
-        return Inertia::render('Societa/Finanze', [
-            'leagues' => $leagues,
-            'myData' => $myData,
-            'stats' => null,
-            'message' => 'Gioca almeno una partita per calcolare i valori monetari.'
-        ]);
-    }
+    // Prepariamo dati di default a ZERO per evitare crash
+    $stats = [
+        'somma_quotations' => 0,
+        'valore_asset' => 0,
+        'media_punti' => 0,
+        'gol_prodotti' => 0,
+        'media_gol_lega' => 1,
+        'index_performance' => 1,
+        'valore_monetario' => 0,
+    ];
 
-    // --- LOGICA CALCOLO (Quella corretta di prima) ---
-    $roster = \App\Models\Roster::where('user_id', $user->id)->with('player')->get();
-    $sommaQuotazioni = $roster->sum(fn($r) => $r->player->quotation ?? 0);
-    $euroPerCredito = 0.26;
-    $valoreAssetEuro = round($sommaQuotazioni * $euroPerCredito, 2);
+    $message = null;
 
-    $calcolaGol = function($puntiMedi) {
-        if ($puntiMedi < 66) return 0;
-        if ($puntiMedi < 70) return 1;
-        return 2 + floor(($puntiMedi - 70) / 5);
-    };
+    // Se l'utente ha una squadra e ha giocato, calcoliamo i valori reali
+    if ($myData && $myData->games_played > 0) {
+        $roster = \App\Models\Roster::where('user_id', $user->id)->with('player')->get();
+        $sommaQuotazioni = $roster->sum(fn($r) => $r->player->quotation ?? 0);
+        $valoreAssetEuro = round($sommaQuotazioni * 0.26, 2);
 
-    $tuaMediaPunti = $myData->total_points / $myData->games_played;
-    $tuoiGolMedi = $calcolaGol($tuaMediaPunti);
+        $calcolaGol = function($p) {
+            if ($p < 66) return 0;
+            if ($p < 70) return 1;
+            return 2 + floor(($p - 70) / 5);
+        };
 
-    $partecipanti = \App\Models\LeagueParticipant::where('league_id', $myData->league_id)->get();
-    $totaleGolLega = 0;
-    foreach ($partecipanti as $p) {
-        if ($p->games_played > 0) {
-            $totaleGolLega += $calcolaGol($p->total_points / $p->games_played);
+        $tuaMediaPunti = $myData->total_points / $myData->games_played;
+        $tuoiGolMedi = $calcolaGol($tuaMediaPunti);
+
+        $partecipanti = \App\Models\LeagueParticipant::where('league_id', $myData->league_id)->get();
+        $totaleGolLega = 0;
+        foreach ($partecipanti as $p) {
+            if ($p->games_played > 0) {
+                $totaleGolLega += $calcolaGol($p->total_points / $p->games_played);
+            }
         }
-    }
-    $mediaGolLega = count($partecipanti) > 0 ? ($totaleGolLega / count($partecipanti)) : 1;
-    if ($mediaGolLega <= 0) $mediaGolLega = 1;
+        $mediaGolLega = count($partecipanti) > 0 ? ($totaleGolLega / count($partecipanti)) : 1;
+        if ($mediaGolLega <= 0) $mediaGolLega = 1;
 
-    $indexPerformance = round($tuoiGolMedi / $mediaGolLega, 2);
-    $valoreMonetarioFinale = round($valoreAssetEuro * $indexPerformance, 2);
+        $indexPerformance = round($tuoiGolMedi / $mediaGolLega, 2);
+        $valoreMonetarioFinale = round($valoreAssetEuro * $indexPerformance, 2);
 
-    // Salvataggio storico
-    \App\Models\MarketValueHistory::updateOrCreate(
-        ['user_id' => $user->id, 'league_id' => $myData->league_id, 'recorded_at' => now()->format('Y-m-d')],
-        ['value' => $valoreMonetarioFinale]
-    );
-
-    return Inertia::render('Societa/Finanze', [
-        'leagues' => $leagues, // <--- INDISPENSABILE PER IL MENU
-        'myData' => $myData,   // <--- INDISPENSABILE PER IL MENU
-        'stats' => [
+        // Aggiorniamo l'array delle statistiche con i valori veri
+        $stats = [
             'somma_quotations' => $sommaQuotazioni,
             'valore_asset' => $valoreAssetEuro,
             'media_punti' => round($tuaMediaPunti, 2),
@@ -141,7 +135,22 @@ class MarketController extends Controller
             'media_gol_lega' => round($mediaGolLega, 2),
             'index_performance' => $indexPerformance,
             'valore_monetario' => $valoreMonetarioFinale,
-        ]
+        ];
+        
+        // Salvataggio storico
+        \App\Models\MarketValueHistory::updateOrCreate(
+            ['user_id' => $user->id, 'league_id' => $myData->league_id, 'recorded_at' => now()->format('Y-m-d')],
+            ['value' => $valoreMonetarioFinale]
+        );
+    } else {
+        $message = "Gioca almeno una partita per attivare il calcolo del valore monetario.";
+    }
+
+    return Inertia::render('Societa/Finanze', [
+        'leagues' => $leagues,
+        'myData' => $myData,
+        'stats' => $stats, // Ora stats è SEMPRE un array, mai null
+        'message' => $message
     ]);
 }
     public function primaveraPage() { $u = auth()->user(); $p = LeagueParticipant::where('user_id', $u->id)->first(); $players = PrimaveraRoster::where('league_id', $p->league_id)->where('user_id', $u->id)->with('player')->get(); return Inertia::render('Societa/Primavera', ['myData' => $p, 'primaveraPlayers' => $players]); }
