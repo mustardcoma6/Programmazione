@@ -72,7 +72,78 @@ class MarketController extends Controller
     public function release(Request $request) { $r = Roster::with('player')->findOrFail($request->roster_id); $p = LeagueParticipant::where('user_id', $r->user_id)->first(); if ($p) { $p->increment('remaining_budget', ceil(($r->release_clause ?: $r->purchase_price) / 2)); $p->decrement('years_budget', ($r->contract_years - floor($r->contract_years / 2))); } $r->delete(); return back(); }
     public function updateContract(Request $request) { $r = Roster::findOrFail($request->roster_id); $r->update(['contract_years' => $request->new_years, 'release_clause' => ($r->release_clause ?: $r->purchase_price) + $request->clausola_investment]); return back(); }
     public function history() { $p = LeagueParticipant::where('user_id', auth()->id())->first(); return Inertia::render('Market/History', ['league' => League::find($p->league_id), 'movements' => Roster::where('league_id', $p->league_id)->with(['player', 'user'])->orderBy('created_at', 'desc')->get()]); }
-    public function financesPage() { $u = auth()->user(); $p = LeagueParticipant::where('user_id', $u->id)->first(); if (!$p) return redirect()->route('dashboard'); $euroValues = ['SAO PAULO' => 68.12, 'ATLETICO G MINEIRO' => 59.54, 'SANTOS' => 56.94, 'FLAMENGO' => 45.24, 'CRUZEIRO E.C.' => 40.82, 'PALMEIRAS' => 39.00, 'CORINTHIANS' => 39.00, 'VASCO DE GAMA' => 33.28, 'BOTAFOGO' => 33.02, 'FLUMINENSE' => 30.94]; $all = LeagueParticipant::where('league_id', $p->league_id)->with('user')->get(); foreach ($all as $t) { $proV = DB::table('rosters')->join('real_players', 'rosters.real_player_id', '=', 'real_players.id')->where('rosters.user_id', $t->user_id)->where('rosters.league_id', $p->league_id)->sum('real_players.quotation'); $priV = DB::table('primavera_rosters')->join('real_players', 'primavera_rosters.real_player_id', '=', 'real_players.id')->where('primavera_rosters.user_id', $t->user_id)->where('primavera_rosters.league_id', $p->league_id)->sum('real_players.quotation'); $t->total_quotation_value = (int)$proV + (int)$priV; $t->euro_value = $euroValues[strtoupper(trim($t->team_name))] ?? 0.00; } $hist = MarketValueHistory::where('user_id', $u->id)->orderBy('recorded_at', 'asc')->get(['value', 'recorded_at']); return Inertia::render('Societa/Finances', ['myData' => $p, 'rankingAsset' => $all->sortByDesc('total_quotation_value')->values()->all(), 'rankingEuro' => $all->sortByDesc('euro_value')->values()->all(), 'myEuroValue' => $euroValues[strtoupper(trim($p->team_name))] ?? 0.00, 'history' => $hist]); }
+    public function financesPage()
+{
+    $user = auth()->user();
+    $lp = \App\Models\LeagueParticipant::where('user_id', $user->id)->first();
+    
+    // Se non ha ancora giocato, evitiamo errori
+    if (!$lp || $lp->games_played == 0) {
+        return Inertia::render('Societa/Finanze', [
+            'stats' => null,
+            'message' => 'Dati insufficienti: gioca almeno una partita per vedere le proiezioni.'
+        ]);
+    }
+
+    // --- 1. VALORE ASSET (Basato su quotazioni) ---
+    $roster = \App\Models\Roster::where('user_id', $user->id)->with('player')->get();
+    $sommaQuotazioni = $roster->sum(fn($r) => $r->player->quotation ?? 0);
+    $euroPerCredito = 0.26;
+    $valoreAssetEuro = round($sommaQuotazioni * $euroPerCredito, 2);
+
+    // --- 2. FUNZIONE CALCOLO GOL (TUA SCALA) ---
+    // Creiamo una piccola funzione interna per riutilizzarla facilmente
+    $calcolaGol = function($puntiMedi) {
+        if ($puntiMedi < 66) return 0;
+        if ($puntiMedi < 70) return 1;
+        // Da 70 in su: 2 gol base + 1 ogni 5 punti
+        return 2 + floor(($puntiMedi - 70) / 5);
+    };
+
+    // --- 3. TUA PERFORMANCE ---
+    $tuaMediaPunti = $lp->total_points / $lp->games_played;
+    $tuoiGolMedi = $calcolaGol($tuaMediaPunti);
+
+    // --- 4. MEDIA GOL LEGA ---
+    $partecipanti = \App\Models\LeagueParticipant::where('league_id', $lp->league_id)->get();
+    $totaleGolLega = 0;
+    foreach ($partecipanti as $p) {
+        if ($p->games_played > 0) {
+            $mediaP = $p->total_points / $p->games_played;
+            $totaleGolLega += $calcolaGol($mediaP);
+        }
+    }
+    $mediaGolLega = count($partecipanti) > 0 ? ($totaleGolLega / count($partecipanti)) : 0;
+    
+    // Protezione contro divisione per zero se nessuno segna
+    if ($mediaGolLega <= 0) $mediaGolLega = 1;
+
+    // --- 5. INDEX E VALORE FINALE ---
+    $indexPerformance = round($tuoiGolMedi / $mediaGolLega, 2);
+    $valoreMonetarioFinale = round($valoreAssetEuro * $indexPerformance, 2);
+
+    // --- 6. SALVATAGGIO STORICO ---
+    \App\Models\MarketValueHistory::updateOrCreate(
+        [
+            'user_id' => $user->id,
+            'league_id' => $lp->league_id,
+            'recorded_at' => now()->format('Y-m-d')
+        ],
+        ['value' => $valoreMonetarioFinale]
+    );
+
+    return Inertia::render('Societa/Finanze', [
+        'stats' => [
+            'somma_quotazioni' => $sommaQuotazioni,
+            'valore_asset' => $valoreAssetEuro,
+            'media_punti' => round($tuaMediaPunti, 2),
+            'gol_prodotti' => $tuoiGolMedi,
+            'media_gol_lega' => round($mediaGolLega, 2),
+            'index_performance' => $indexPerformance,
+            'valore_monetario' => $valoreMonetarioFinale,
+        ]
+    ]);
+}
     public function primaveraPage() { $u = auth()->user(); $p = LeagueParticipant::where('user_id', $u->id)->first(); $players = PrimaveraRoster::where('league_id', $p->league_id)->where('user_id', $u->id)->with('player')->get(); return Inertia::render('Societa/Primavera', ['myData' => $p, 'primaveraPlayers' => $players]); }
     private function processExpiredAuctions($leagueId) {
         $now = Carbon::now('Europe/Rome');
