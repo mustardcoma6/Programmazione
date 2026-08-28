@@ -91,11 +91,15 @@ class LeagueController extends Controller
     }
 
     // --- LA NUOVA CLASSIFICA CAMPIONATO (Gestita da te) ---
+    // --- GESTIONE CAMPIONATO (Questa è la funzione corretta) ---
     public function editCampionato() 
     {
         $l = auth()->user()->leagues()->first();
-        $participants = LeagueParticipant::where('league_id', $l->id)->with('user')->get();
+        $participants = LeagueParticipant::where('league_id', $l->id)
+            ->with('user')
+            ->get();
         
+        // Assicurati che il file si chiami CampionatoEdit.vue in resources/js/Pages/Admin/
         return Inertia::render('Admin/CampionatoEdit', [
             'participants' => $participants
         ]);
@@ -103,11 +107,15 @@ class LeagueController extends Controller
 
     public function updateCampionato(Request $request) 
     {
+        // Usiamo 'classifica' perché è il nome che abbiamo dato nel form Vue
         foreach ($request->classifica as $data) {
-            LeagueParticipant::where('id', $data['id'])->update([
-                'total_points' => $data['total_points'],
-                'games_played' => $data['games_played'],
-            ]);
+            $participant = LeagueParticipant::find($data['id']);
+            if ($participant) {
+                $participant->update([
+                    'total_points' => $data['total_points'],
+                    'games_played' => $data['games_played'],
+                ]);
+            }
         }
         return redirect()->back()->with('message', 'Classifica Campionato aggiornata!');
     }
