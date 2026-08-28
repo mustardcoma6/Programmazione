@@ -68,6 +68,7 @@ const isAdmin = computed(() => hasLeague.value && leagues.value[0]?.admin_id ===
                                     <DropdownLink :href="route('admin.primavera')">Gestione Primavera</DropdownLink>
                                     <DropdownLink :href="route('admin.players')">Gestione Listone</DropdownLink>
                                     <DropdownLink :href="route('admin.finances')">Gestione Finanze</DropdownLink>
+                                    <DropdownLink :href="route('admin.campionato.edit')">🏆 Gestione Campionato</DropdownLink>
                                 </template>
                             </Dropdown>
                         </div>
@@ -127,10 +128,10 @@ const isAdmin = computed(() => hasLeague.value && leagues.value[0]?.admin_id ===
                         <ResponsiveNavLink :href="route('admin.rosters')">Gestione Rose</ResponsiveNavLink>
                         <ResponsiveNavLink :href="route('admin.credits')">Gestione Budget</ResponsiveNavLink>
                         <ResponsiveNavLink :href="route('admin.finances')">Gestione Finanze</ResponsiveNavLink>
-                        <ResponsiveNavLink :href="route('admin.rankings.edit')" :active="route().current('admin.rankings.edit')">
-         ⚙️ Gestione Classifica
-    </ResponsiveNavLink>
-                     </div>
+                        <ResponsiveNavLink :href="route('admin.campionato.edit')" :active="route().current('admin.campionato.edit')">
+                        🏆 Gestione Campionato
+                    </ResponsiveNavLink>
+                    </div>
 
                     <!-- SEZIONE UTENTE (Profilo ed Esci) -->
                     <div class="border-t border-gray-200 mt-4 pt-4 pb-1">
