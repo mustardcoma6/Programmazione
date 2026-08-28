@@ -10,7 +10,7 @@ const props = defineProps({
 const form = useForm({
     classifica: props.participants.map(p => ({
         id: p.id,
-        name: p.user.name,
+        name: p.team_name, // <--- Cambiato da p.user.name a p.team_name
         league_points: p.league_points || 0,
         total_points: p.total_points || 0,
         games_played: p.games_played || 0
@@ -50,7 +50,7 @@ const submit = () => {
                             
                             <!-- Nome Squadra -->
                             <div class="w-full sm:w-1/3 text-center sm:text-left">
-                                <span class="font-black text-gray-800 uppercase text-sm tracking-tight">{{ team.name }}</span>
+                                <span class="font-black text-blue-900 uppercase text-sm tracking-tight">{{ team.name }}</span>
                             </div>
                             
                             <!-- Campi Input -->

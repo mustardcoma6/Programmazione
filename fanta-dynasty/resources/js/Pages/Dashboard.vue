@@ -98,7 +98,7 @@ const getRoleClass = (role) => {
                             <tbody class="divide-y divide-gray-100">
                                 <tr v-for="(squadra, index) in classifica" :key="squadra.id" class="hover:bg-blue-50 transition">
                                     <td class="px-4 py-4 font-black text-gray-300 italic">#{{ index + 1 }}</td>
-                                    <td class="px-4 py-4 font-bold text-gray-800">{{ squadra.user.name }}</td>
+                                    <td class="px-4 py-4 font-bold text-gray-800 uppercase tracking-tighter">{{ squadra.team_name }}</td>
                                     <td class="px-2 py-4 text-center font-black text-gray-900 text-lg">{{ squadra.league_points }}</td>
                                     <td class="px-2 py-4 text-center text-gray-400 text-xs">{{ squadra.games_played }}</td>
                                     <td class="px-2 py-4 text-center font-black text-blue-600">{{ squadra.total_points }}</td>
