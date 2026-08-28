@@ -1,6 +1,6 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head, Link } from '@inertiajs/vue3';
+import { Head } from '@inertiajs/vue3';
 import { computed } from 'vue';
 
 const props = defineProps({
@@ -14,49 +14,16 @@ const props = defineProps({
     classifica: Array 
 });
 
-const limits = { P: 3, D: 8, C: 8, A: 6 };
-
-const missingPlayers = computed(() => {
-    const counts = { P: 0, D: 0, C: 0, A: 0 };
-    if (props.myPlayers) {
-        props.myPlayers.forEach(p => { 
-            if (p.player && p.player.role) counts[p.player.role]++;
-        });
-    }
-    return {
-        P: Math.max(0, limits.P - counts.P),
-        D: Math.max(0, limits.D - counts.D),
-        C: Math.max(0, limits.C - counts.C),
-        A: Math.max(0, limits.A - counts.A)
-    };
-});
-
-const totalMissing = computed(() => Object.values(missingPlayers.value).reduce((a, b) => a + b, 0));
-
+// Manteniamo solo la logica per il consiglio del Pres
 const strategyAdvice = computed(() => {
-    if (!props.myData || totalMissing.value === 0) return "Rosa al completo. Pensa solo alla formazione!";
-    const budget = props.myData.remaining_budget;
-    const avg = totalMissing.value > 0 ? Math.floor(budget / totalMissing.value) : 0;
-    return `Hai circa ${avg} cr per ogni slot libero. Gestiscili con intelligenza.`;
+    if (!props.myData) return "Benvenuto Pres!";
+    
+    // Calcolo rapido per il consiglio basato sui giocatori in rosa
+    const countA = props.myPlayers ? props.myPlayers.filter(p => p.player?.role === 'A').length : 0;
+    if (countA < 6) return `Rosa in costruzione. Ti mancano delle punte per completare il reparto!`;
+    
+    return "Rosa al completo. Pensa solo alla formazione e alla prossima giornata!";
 });
-
-const getSlotStyle = (role) => {
-    switch(role) {
-        case 'P': return 'bg-yellow-50 border-yellow-400 text-yellow-700';
-        case 'D': return 'bg-green-50 border-green-800 text-green-900';
-        case 'C': return 'bg-blue-50 border-blue-600 text-blue-800';
-        case 'A': return 'bg-red-50 border-red-600 text-red-800';
-        default: return 'bg-gray-50 border-gray-200 text-gray-500';
-    }
-};
-
-const getRoleClass = (role) => {
-    if (role === 'P') return 'role-P';
-    if (role === 'D') return 'role-D';
-    if (role === 'C') return 'role-C';
-    if (role === 'A') return 'role-A';
-    return '';
-};
 </script>
 
 <template>
@@ -109,7 +76,7 @@ const getRoleClass = (role) => {
                 <!-- 3. GRIGLIA A DUE COLONNE -->
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
                     
-                    <!-- COLONNA SINISTRA (Grande): Consigli, DS, Campo -->
+                    <!-- COLONNA SINISTRA (Grande): Consigli -->
                     <div class="lg:col-span-2 space-y-8">
                         
                         <!-- ANALISI E CONSIGLI -->
@@ -125,49 +92,17 @@ const getRoleClass = (role) => {
                             </div>
                         </div>
 
-                        <!-- SLOT LIBERI (RAPPORTO DS) -->
-                        <div class="bg-white p-8 shadow-xl rounded-[2.5rem] border border-gray-100">
-                            <div class="flex items-center gap-4 mb-8">
-                                <span class="text-4xl">📝</span>
-                                <div>
-                                    <h4 class="text-xs font-black uppercase text-red-500 tracking-tighter">Nota del Direttore Sportivo</h4>
-                                    <p class="text-lg font-black text-gray-800 uppercase tracking-tight">Rosa attualmente incompleta</p>
-                                </div>
-                            </div>
-                            <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
-                                <div v-for="(count, role) in missingPlayers" :key="role" 
-                                     class="p-6 rounded-[2rem] border-2 transition-all shadow-sm flex flex-col items-center"
-                                     :class="count === 0 ? 'bg-gray-50 border-gray-100 opacity-40' : getSlotStyle(role)">
-                                    <p class="text-5xl font-black mb-2">{{ count }}</p>
-                                    <p class="text-xs font-black uppercase tracking-[0.2em] mb-1">Slot {{ role }}</p>
-                                    <p class="text-[9px] font-bold uppercase opacity-60">{{ count === 0 ? 'Chiuso' : 'Liberi' }}</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- CAMPO DA GIOCO -->
-                        <div v-if="currentLineup" class="bg-green-700 p-8 shadow-2xl rounded-[3rem] border-[8px] border-green-800 text-white relative overflow-hidden">
-                            <div class="absolute inset-0 opacity-10 pointer-events-none">
-                                <div class="w-full h-full border-2 border-white rounded-full scale-150 -translate-y-1/2"></div>
-                            </div>
-                            <div class="flex justify-between items-center mb-10 relative z-10">
-                                <h3 class="font-black uppercase text-2xl tracking-tighter">L'11 Titolare <span class="text-green-300 ml-4 font-mono">{{ currentLineup.module }}</span></h3>
-                                <a :href="route('roster.lineup')" class="bg-green-900/50 hover:bg-green-900 px-6 py-2 rounded-2xl text-[10px] font-black tracking-widest transition border border-white/20 uppercase shadow-lg">Modifica Campo</a>
-                            </div>
-                            <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6 relative z-10">
-                                <div v-for="detail in currentLineup.details" :key="detail.id" class="p-4 rounded-2xl bg-white/10 border border-white/10 backdrop-blur-lg text-center shadow-sm">
-                                    <p class="text-[10px] font-black uppercase mb-1" :class="getRoleClass(detail.player?.role)">{{ detail.player?.role }}</p>
-                                    <p class="text-sm font-black truncate uppercase tracking-tighter">{{ detail.player?.name }}</p>
-                                </div>
-                            </div>
+                        <!-- Spazio vuoto o per future sezioni -->
+                        <div class="p-12 text-center border-2 border-dashed border-gray-100 rounded-[3rem]">
+                            <p class="text-gray-300 font-bold uppercase text-xs tracking-widest text-center">Area Direzionale - FantaGest</p>
                         </div>
                     </div>
 
                     <!-- COLONNA DESTRA (Piccola): CLASSIFICA -->
                     <div class="lg:col-span-1">
                         <div v-if="classifica && classifica.length > 0" class="bg-white rounded-[2rem] shadow-xl border border-gray-100 overflow-hidden sticky top-24">
-                            <div class="bg-blue-600 px-5 py-4">
-                                <h3 class="font-black text-white uppercase italic text-xs tracking-widest text-center">Classifica Campionato</h3>
+                            <div class="bg-blue-600 px-5 py-4 text-center">
+                                <h3 class="font-black text-white uppercase italic text-xs tracking-widest">Classifica Campionato</h3>
                             </div>
                             <div class="overflow-x-auto">
                                 <table class="w-full text-left">
@@ -199,16 +134,9 @@ const getRoleClass = (role) => {
                         </div>
                     </div>
 
-                </div> <!-- Fine Grid -->
+                </div>
 
             </div>
         </div>
     </AuthenticatedLayout>
 </template>
-
-<style scoped>
-.role-P { color: #856404; background-color: #fff3cd; padding: 2px 8px; border-radius: 6px; font-weight: 900; }
-.role-D { color: #155724; background-color: #d4edda; padding: 2px 8px; border-radius: 6px; font-weight: 900; }
-.role-C { color: #004085; background-color: #cce5ff; padding: 2px 8px; border-radius: 6px; font-weight: 900; }
-.role-A { color: #721c24; background-color: #f8d7da; padding: 2px 8px; border-radius: 6px; font-weight: 900; }
-</style>
