@@ -23,7 +23,7 @@ class LeagueController extends Controller
         $allParticipants = []; 
         $isMarketOpen = false; 
         $stats = null;
-        $classifica = []; // Inizializziamo la classifica
+        $classifica = []; 
 
         if ($firstLeague) {
             $myData = LeagueParticipant::where('league_id', $firstLeague->id)->where('user_id', $user->id)->first();
@@ -32,7 +32,7 @@ class LeagueController extends Controller
             $allParticipants = LeagueParticipant::where('league_id', $firstLeague->id)->orderBy('remaining_budget', 'desc')->get();
             $isMarketOpen = MarketSession::where('league_id', $firstLeague->id)->where('start_at', '<=', now())->where('end_at', '>=', now())->exists();
 
-            // CLASSIFICA DINAMICA DAL DATABASE
+            // CLASSIFICA CAMPIONATO (Dinamica dal DB)
             $classifica = LeagueParticipant::where('league_id', $firstLeague->id)
                 ->with('user')
                 ->orderBy('total_points', 'desc')
@@ -42,7 +42,6 @@ class LeagueController extends Controller
             $topSigning = Roster::where('user_id', $user->id)->where('league_id', $firstLeague->id)->with('player')->orderBy('purchase_price', 'desc')->first();
             $creditRank = LeagueParticipant::where('league_id', $firstLeague->id)->where('remaining_budget', '>', $myData->remaining_budget)->count() + 1;
 
-            // Calcolo posizione in classifica generale
             $pos = $classifica->search(function($item) use ($user) {
                 return $item->user_id === $user->id;
             });
@@ -65,41 +64,16 @@ class LeagueController extends Controller
             'allParticipants' => $allParticipants, 
             'isMarketOpen' => (bool)$isMarketOpen, 
             'stats' => $stats,
-            'classifica' => $classifica // Passiamo la classifica alla pagina Vue
+            'classifica' => $classifica 
         ]);
     }
 
-    // --- IL VECCHIO RANKING (Torna come prima, così la pagina non è più bianca) ---
-    public function rankingIndex()
-    {
-        $rankingData = [
-            ['name' => 'SANTOS', 'points' => 49], 
-            ['name' => 'BOTAFOGO', 'points' => 44], 
-            ['name' => 'PALMEIRAS', 'points' => 43], 
-            ['name' => 'ATLETICO G MINEIRO', 'points' => 36], 
-            ['name' => 'VASCO DE GAMA', 'points' => 30], 
-            ['name' => 'CORINTHIANS', 'points' => 30], 
-            ['name' => 'FLAMENGO', 'points' => 26], 
-            ['name' => 'CRUZEIRO E.C.', 'points' => 18], 
-            ['name' => 'FLUMINENSE', 'points' => 0], 
-            ['name' => 'SAO PAULO' , 'points' => 0]
-        ];
-        return Inertia::render('Lega/Ranking', [
-            'ranking' => $rankingData, 
-            'lastUpdate' => '27/08/2024' // o la data che preferisci
-        ]);
-    }
-
-    // --- LA NUOVA CLASSIFICA CAMPIONATO (Gestita da te) ---
-    // --- GESTIONE CAMPIONATO (Questa è la funzione corretta) ---
+    // --- GESTIONE CAMPIONATO (ADMIN) ---
     public function editCampionato() 
     {
         $l = auth()->user()->leagues()->first();
-        $participants = LeagueParticipant::where('league_id', $l->id)
-            ->with('user')
-            ->get();
+        $participants = LeagueParticipant::where('league_id', $l->id)->with('user')->get();
         
-        // Assicurati che il file si chiami CampionatoEdit.vue in resources/js/Pages/Admin/
         return Inertia::render('Admin/CampionatoEdit', [
             'participants' => $participants
         ]);
@@ -107,7 +81,6 @@ class LeagueController extends Controller
 
     public function updateCampionato(Request $request) 
     {
-        // Usiamo 'classifica' perché è il nome che abbiamo dato nel form Vue
         foreach ($request->classifica as $data) {
             $participant = LeagueParticipant::find($data['id']);
             if ($participant) {
@@ -119,27 +92,21 @@ class LeagueController extends Controller
         }
         return redirect()->back()->with('message', 'Classifica Campionato aggiornata!');
     }
-        
-    // Nota il percorso: Admin/RankingsEdit
-    return Inertia::render('Admin/RankingsEdit', [
-        'participants' => $participants
-      ]);
+
+    // --- RANKING STATICO (Il tuo vecchio ranking) ---
+    public function rankingIndex()
+    {
+        $rankingData = [
+            ['name' => 'SANTOS', 'points' => 49], ['name' => 'BOTAFOGO', 'points' => 44], 
+            ['name' => 'PALMEIRAS', 'points' => 43], ['name' => 'ATLETICO G MINEIRO', 'points' => 36], 
+            ['name' => 'VASCO DE GAMA', 'points' => 30], ['name' => 'CORINTHIANS', 'points' => 30], 
+            ['name' => 'FLAMENGO', 'points' => 26], ['name' => 'CRUZEIRO E.C.', 'points' => 18], 
+            ['name' => 'FLUMINENSE', 'points' => 0], ['name' => 'SAO PAULO', 'points' => 0]
+        ];
+        return Inertia::render('Lega/Ranking', ['ranking' => $rankingData, 'lastUpdate' => '27/08/2024']);
     }
 
-    public function updateRankings(Request $request) {
-        foreach ($request->rankings as $data) {
-            $participant = LeagueParticipant::find($data['id']);
-            if ($participant) {
-                $participant->update([
-                    'total_points' => $data['total_points'],
-                    'games_played' => $data['games_played'],
-                ]);
-            }
-        }
-        return redirect()->back()->with('message', 'Classifica aggiornata!');
-    }
-
-    // --- ALTRI METODI ESISTENTI (Sistemati per non fare errori) ---
+    // --- ALTRI METODI DI GESTIONE ---
     public function manageFinances() { $l = auth()->user()->leagues()->first(); $p = LeagueParticipant::where('league_id', $l->id)->with('user')->get(); return Inertia::render('Admin/Finances', ['league' => $l, 'participants' => $p, 'stats' => ['totalCredits' => $p->sum('remaining_budget'), 'totalYears' => $p->sum('years_budget'), 'avgCredits' => round($p->avg('remaining_budget'))]]); }
     public function managePrimavera() { $l = auth()->user()->leagues()->first(); $teams = LeagueParticipant::where('league_id', $l->id)->with('user')->get(); foreach ($teams as $t) { $t->primavera_players = PrimaveraRoster::where('league_id', $l->id)->where('user_id', $t->user_id)->with('player')->get(); } $sold = array_merge(Roster::where('league_id', $l->id)->pluck('real_player_id')->toArray(), PrimaveraRoster::where('league_id', $l->id)->pluck('real_player_id')->toArray()); $available = RealPlayer::whereNotIn('id', $sold)->orderBy('role', 'desc')->get(); return Inertia::render('Admin/Primavera', ['league' => $l, 'teams' => $teams, 'availablePlayers' => $available]); }
     public function assignPrimavera(Request $request) { PrimaveraRoster::create(['league_id' => auth()->user()->leagues()->first()->id, 'user_id' => $request->user_id, 'real_player_id' => $request->player_id, 'purchase_price' => $request->price]); $p = LeagueParticipant::where('user_id', $request->user_id)->first(); $p->decrement('remaining_budget', $request->price); return back(); }
