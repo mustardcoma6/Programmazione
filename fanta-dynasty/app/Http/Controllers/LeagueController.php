@@ -74,40 +74,77 @@ class LeagueController extends Controller
     }
 
     public function updateCampionato(Request $request) 
-    {
-    // ... (tutta la parte iniziale dei calcoli che abbiamo fatto prima: benchmark, euro, ecc.) ...
+   {
+    // 1. Definiamo i parametri base per il calcolo del valore
+    $investimentoBase = 130;
+    $plusvalorePotenziale = 440; // (570 - 130)
 
+    // 2. Calcoliamo il Benchmark (Rosa perfetta del listone)
+    $topP = \App\Models\RealPlayer::where('role', 'P')->orderBy('quotation', 'desc')->limit(3)->get()->sum('quotation');
+    $topD = \App\Models\RealPlayer::where('role', 'D')->orderBy('quotation', 'desc')->limit(8)->get()->sum('quotation');
+    $topC = \App\Models\RealPlayer::where('role', 'C')->orderBy('quotation', 'desc')->limit(8)->get()->sum('quotation');
+    $topA = \App\Models\RealPlayer::where('role', 'A')->orderBy('quotation', 'desc')->limit(6)->get()->sum('quotation');
+    $benchmarkQuotazione = ($topP + $topD + $topC + $topA) ?: 1;
+
+    // 3. Funzione per calcolare i gol in base ai punti (tua scala)
+    $calcolaGol = function($p) {
+        if ($p < 66) return 0;
+        if ($p < 70) return 1;
+        return 2 + floor(($p - 70) / 5);
+    };
+
+    // 4. AGGIORNIAMO I DATI DELLE SQUADRE NEL DATABASE
     foreach ($request->classifica as $data) {
-        $lp = \App\Models\LeagueParticipant::find($data['id']);
-        if ($lp) {
-            // 1. Aggiorniamo i dati attuali della squadra
-            $lp->update([
+        $participant = \App\Models\LeagueParticipant::find($data['id']);
+        if ($participant) {
+            $participant->update([
                 'league_points' => $data['league_points'],
                 'total_points' => $data['total_points'],
                 'games_played' => $data['games_played'],
             ]);
-
-            // 2. Calcoliamo il valore attuale (usando la formula di borsa)
-            // (Assumiamo che tu abbia già calcolato $valoreAttuale con la formula Asset * Efficiency)
-            // $valoreAttuale = ... (la logica che abbiamo scritto nel messaggio precedente)
-
-            // 3. SALVIAMO NELLA STORIA usando il numero di partite come "Giornata"
-            if ($lp->games_played > 0) {
-                \App\Models\MarketValueHistory::updateOrCreate(
-                    [
-                        'user_id' => $lp->user_id,
-                        'league_id' => $lp->league_id,
-                        'matchday' => $lp->games_played // <-- Qui usiamo il numero che scrivi tu!
-                    ],
-                    [
-                        'value' => round($valoreAttuale, 2),
-                        'recorded_at' => now()
-                    ]
-                );
-            }
         }
     }
-    return redirect()->back()->with('message', 'Classifica e Grafici aggiornati!');
+
+    // 5. ORA RICALCOLIAMO IL VALORE DI MERCATO PER TUTTI E SALVIAMO NELLA STORIA
+    // Recuperiamo tutti i partecipanti aggiornati della lega
+    $firstId = $request->classifica[0]['id'];
+    $leagueId = \App\Models\LeagueParticipant::find($firstId)->league_id;
+    $tutti = \App\Models\LeagueParticipant::where('league_id', $leagueId)->get();
+
+    // Troviamo chi segna più di tutti per l'efficienza
+    $maxGolLega = $tutti->map(fn($s) => $calcolaGol($s->games_played > 0 ? ($s->total_points / $s->games_played) : 0))->max() ?: 1;
+
+    foreach ($tutti as $lp) {
+        // A. Calcolo Asset Quality (Rosa attuale)
+        $rosterSum = \App\Models\Roster::where('user_id', $lp->user_id)->where('league_id', $lp->league_id)
+            ->with('player')->get()->sum(fn($r) => $r->player->quotation ?? 0);
+        $assetQuality = $rosterSum / $benchmarkQuotazione;
+
+        // B. Calcolo Winning Efficiency (Gol rispetto al leader)
+        $mediaP = $lp->games_played > 0 ? ($lp->total_points / $lp->games_played) : 0;
+        $tuoiGol = $calcolaGol($mediaP);
+        $winningEfficiency = $tuoiGol / $maxGolLega;
+
+        // C. VALORE ATTUALE (Ecco la variabile che mancava!)
+        $valoreAttuale = $investimentoBase + ($plusvalorePotenziale * $assetQuality * $winningEfficiency);
+
+        // D. Salva nella tabella dei grafici
+        if ($lp->games_played > 0) {
+            \App\Models\MarketValueHistory::updateOrCreate(
+                [
+                    'user_id' => $lp->user_id,
+                    'league_id' => $lp->league_id,
+                    'matchday' => $lp->games_played
+                ],
+                [
+                    'value' => round($valoreAttuale, 2),
+                    'recorded_at' => now()
+                ]
+            );
+        }
+    }
+
+    return redirect()->back()->with('message', 'Classifica e Valutazioni aggiornate correttamente!');
     }
 
     public function rankingIndex()
