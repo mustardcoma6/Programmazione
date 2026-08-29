@@ -6,13 +6,18 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
-{
-    Schema::table('market_value_histories', function (Blueprint $table) {
-        // Aggiungiamo la colonna matchday per sapere a quale giornata si riferisce il valore
-        $table->integer('matchday')->default(1)->after('league_id');
-    });
-}
+    {
+        Schema::table('market_value_histories', function (Blueprint $table) {
+            // Aggiungiamo la colonna matchday per il grafico
+            $table->integer('matchday')->default(1)->after('league_id');
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::table('market_value_histories', function (Blueprint $table) {
+            $table->dropColumn('matchday');
+        });
+    }
+};
