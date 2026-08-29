@@ -76,66 +76,63 @@ class MarketController extends Controller
 {
     $user = auth()->user();
     $lp = \App\Models\LeagueParticipant::where('user_id', $user->id)->first();
-    
     $investimentoIniziale = 130;
     $premioMassimo = 570;
-    $plusvalorePotenziale = $premioMassimo - $investimentoIniziale; // 440€
+    $plusvalorePotenziale = 440; // 570 - 130
 
     if (!$lp || $lp->games_played == 0) {
-        return Inertia::render('Societa/Finanze', ['stats' => null, 'message' => 'Gioca una partita per il calcolo.']);
+        return Inertia::render('Societa/Finanze', ['stats' => null]);
     }
 
-    // --- 1. CALCOLO BENCHMARK (I migliori 25 possibili nel listone) ---
-    // Sommiamo le quotazioni dei top: 3 Portieri, 8 Difensori, 8 Centrocampisti, 6 Attaccanti
+    // --- 1. TOP 25 PER RUOLO (3-8-8-6) ---
     $topP = \App\Models\RealPlayer::where('role', 'P')->orderBy('quotation', 'desc')->limit(3)->sum('quotation');
     $topD = \App\Models\RealPlayer::where('role', 'D')->orderBy('quotation', 'desc')->limit(8)->sum('quotation');
     $topC = \App\Models\RealPlayer::where('role', 'C')->orderBy('quotation', 'desc')->limit(8)->sum('quotation');
     $topA = \App\Models\RealPlayer::where('role', 'A')->orderBy('quotation', 'desc')->limit(6)->sum('quotation');
-    $benchmarkTop25 = $topP + $topD + $topC + $topA;
+    $benchmarkQuotazione = $topP + $topD + $topC + $topA;
 
-    // --- 2. ASSET QUALITY INDEX ---
+    // --- 2. ASSET QUALITY (Quanto sei vicino alla rosa perfetta) ---
     $roster = \App\Models\Roster::where('user_id', $user->id)->with('player')->get();
     $tuaRosaSum = $roster->sum(fn($r) => $r->player->quotation ?? 0);
-    $assetQualityIndex = $tuaRosaSum / ($benchmarkTop25 ?: 1);
+    $assetQuality = $tuaRosaSum / $benchmarkQuotazione;
 
-    // --- 3. GOAL STRENGTH INDEX ---
+    // --- 3. WINNING EFFICIENCY (Confronto con il Leader) ---
     $calcolaGol = function($p) {
         if ($p < 66) return 0;
         if ($p < 70) return 1;
         return 2 + floor(($p - 70) / 5);
     };
 
-    // I tuoi gol
-    $tuaMediaP = $lp->total_points / $lp->games_played;
-    $tuoiGol = $calcolaGol($tuaMediaP);
+    // Calcoliamo i gol medi di tutti i partecipanti
+    $partecipanti = \App\Models\LeagueParticipant::where('league_id', $lp->league_id)->get();
+    $golSquadre = $partecipanti->map(function($p) use ($calcolaGol) {
+        $media = $p->games_played > 0 ? ($p->total_points / $p->games_played) : 0;
+        return [
+            'user_id' => $p->user_id,
+            'gol' => $calcolaGol($media)
+        ];
+    });
 
-    // Media gol della lega
-    $tutti = \App\Models\LeagueParticipant::where('league_id', $lp->league_id)->get();
-    $sommaGolLega = 0;
-    foreach ($tutti as $p) {
-        $mediaP = $p->games_played > 0 ? ($p->total_points / $p->games_played) : 0;
-        $sommaGolLega += $calcolaGol($mediaP);
-    }
-    $mediaGolLega = $sommaGolLega / count($tutti);
-    if ($mediaGolLega <= 0) $mediaGolLega = 1;
+    $tuoiGol = $golSquadre->firstWhere('user_id', $user->id)['gol'];
+    $maxGolLega = $golSquadre->max('gol') ?: 1; // Il benchmark è chi segna di più
 
-    $goalStrengthIndex = $tuoiGol / $mediaGolLega;
+    // Efficienza: Se tu sei il leader dei gol, sei al 100%
+    $winningEfficiency = $tuoiGol / $maxGolLega;
 
-    // --- 4. CALCOLO VALORE DI VENDITA FINALE ---
-    // Formula: Base + (Potenziale * Qualità Rosa * Forza Realizzativa)
-    $valoreDiVendita = $investimentoIniziale + ($plusvalorePotenziale * $assetQualityIndex * $goalStrengthIndex);
+    // --- 4. VALORE DI MERCATO FINALE ---
+    $valoreFinale = $investimentoIniziale + ($plusvalorePotenziale * $assetQuality * $winningEfficiency);
 
     return Inertia::render('Societa/Finanze', [
         'leagues' => $user->leagues()->get(),
         'myData' => $lp,
         'stats' => [
-            'valore_monetario' => round($valoreDiVendita, 2),
-            'asset_quality_perc' => round($assetQualityIndex * 100, 1),
-            'goal_strength_perc' => round($goalStrengthIndex * 100, 1),
+            'valore_monetario' => round($valoreFinale, 2),
+            'asset_quality_perc' => round($assetQuality * 100, 1),
+            'winning_efficiency_perc' => round($winningEfficiency * 100, 1),
             'tua_rosa_val' => $tuaRosaSum,
-            'benchmark_val' => $benchmarkTop25,
+            'benchmark_val' => $benchmarkQuotazione,
             'tuoi_gol' => $tuoiGol,
-            'media_gol_lega' => round($mediaGolLega, 2),
+            'leader_gol' => $maxGolLega,
             'investimento' => $investimentoIniziale
         ]
     ]);
