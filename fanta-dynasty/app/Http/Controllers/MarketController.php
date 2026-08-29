@@ -75,82 +75,67 @@ class MarketController extends Controller
     public function financesPage()
 {
     $user = auth()->user();
-    $leagues = $user->leagues()->get();
-    $firstLeague = $leagues->first();
-    $myData = null;
+    $lp = \App\Models\LeagueParticipant::where('user_id', $user->id)->first();
+    $premioMassimo = 570; // Il tuo obiettivo finale
 
-    if ($firstLeague) {
-        $myData = \App\Models\LeagueParticipant::where('league_id', $firstLeague->id)
-            ->where('user_id', $user->id)
-            ->first();
+    if (!$lp || $lp->games_played == 0) {
+        return Inertia::render('Societa/Finanze', ['stats' => null, 'message' => 'Dati insufficienti.']);
     }
 
-    // Prepariamo dati di default a ZERO per evitare crash
-    $stats = [
-        'somma_quotations' => 0,
-        'valore_asset' => 0,
-        'media_punti' => 0,
-        'gol_prodotti' => 0,
-        'media_gol_lega' => 1,
-        'index_performance' => 1,
-        'valore_monetario' => 0,
-    ];
+    // --- 1. CALCOLO TOP 25 IDEALE (Il benchmark 100%) ---
+    // Prendiamo i 25 giocatori più costosi del listone (3P, 8D, 8C, 6A)
+    $topP = \App\Models\RealPlayer::where('role', 'P')->orderBy('quotation', 'desc')->limit(3)->sum('quotation');
+    $topD = \App\Models\RealPlayer::where('role', 'D')->orderBy('quotation', 'desc')->limit(8)->sum('quotation');
+    $topC = \App\Models\RealPlayer::where('role', 'C')->orderBy('quotation', 'desc')->limit(8)->sum('quotation');
+    $topA = \App\Models\RealPlayer::where('role', 'A')->orderBy('quotation', 'desc')->limit(6)->sum('quotation');
+    $benchmarkTop25 = $topP + $topD + $topC + $topA;
 
-    $message = null;
+    // --- 2. ASSET QUALITY (Tua Rosa vs Top 25) ---
+    $roster = \App\Models\Roster::where('user_id', $user->id)->with('player')->get();
+    $tuaRosaSum = $roster->sum(fn($r) => $r->player->quotation ?? 0);
+    $assetQuality = $tuaRosaSum / $benchmarkTop25;
 
-    // Se l'utente ha una squadra e ha giocato, calcoliamo i valori reali
-    if ($myData && $myData->games_played > 0) {
-        $roster = \App\Models\Roster::where('user_id', $user->id)->with('player')->get();
-        $sommaQuotazioni = $roster->sum(fn($r) => $r->player->quotation ?? 0);
-        $valoreAssetEuro = round($sommaQuotazioni * 0.26, 2);
+    // --- 3. WINNING EFFICIENCY (Tuoi Gol vs Top Gol della Lega) ---
+    $calcolaGol = function($p) {
+        if ($p < 66) return 0;
+        if ($p < 70) return 1;
+        return 2 + floor(($p - 70) / 5);
+    };
 
-        $calcolaGol = function($p) {
-            if ($p < 66) return 0;
-            if ($p < 70) return 1;
-            return 2 + floor(($p - 70) / 5);
-        };
+    $tuaMediaP = $lp->total_points / $lp->games_played;
+    $tuoiGol = $calcolaGol($tuaMediaP);
 
-        $tuaMediaPunti = $myData->total_points / $myData->games_played;
-        $tuoiGolMedi = $calcolaGol($tuaMediaPunti);
+    // Troviamo la media gol del primo in classifica (il riferimento di chi vince)
+    $topParticipant = \App\Models\LeagueParticipant::where('league_id', $lp->league_id)
+        ->orderBy('league_points', 'desc')
+        ->orderBy('total_points', 'desc')
+        ->first();
+    $mediaP_Top = $topParticipant->total_points / ($topParticipant->games_played ?: 1);
+    $golTop = $calcolaGol($mediaP_Top) ?: 1; // Minimo 1 per evitare divisione per zero
 
-        $partecipanti = \App\Models\LeagueParticipant::where('league_id', $myData->league_id)->get();
-        $totaleGolLega = 0;
-        foreach ($partecipanti as $p) {
-            if ($p->games_played > 0) {
-                $totaleGolLega += $calcolaGol($p->total_points / $p->games_played);
-            }
-        }
-        $mediaGolLega = count($partecipanti) > 0 ? ($totaleGolLega / count($partecipanti)) : 1;
-        if ($mediaGolLega <= 0) $mediaGolLega = 1;
+    $winningEfficiency = $tuoiGol / $golTop;
 
-        $indexPerformance = round($tuoiGolMedi / $mediaGolLega, 2);
-        $valoreMonetarioFinale = round($valoreAssetEuro * $indexPerformance, 2);
-
-        // Aggiorniamo l'array delle statistiche con i valori veri
-        $stats = [
-            'somma_quotations' => $sommaQuotazioni,
-            'valore_asset' => $valoreAssetEuro,
-            'media_punti' => round($tuaMediaPunti, 2),
-            'gol_prodotti' => $tuoiGolMedi,
-            'media_gol_lega' => round($mediaGolLega, 2),
-            'index_performance' => $indexPerformance,
-            'valore_monetario' => $valoreMonetarioFinale,
-        ];
-        
-        // Salvataggio storico
-        \App\Models\MarketValueHistory::updateOrCreate(
-            ['user_id' => $user->id, 'league_id' => $myData->league_id, 'recorded_at' => now()->format('Y-m-d')],
-            ['value' => $valoreMonetarioFinale]
-        );
-    } else {
-        $message = "Gioca almeno una partita per attivare il calcolo del valore monetario.";
-    }
+    // --- 4. MARKET CAP FINALE ---
+    // Il valore è la probabilità di prendersi i 570€ basata su rosa e gol
+    $marketCap = $premioMassimo * $assetQuality * $winningEfficiency;
+    
+    // Non può mai essere meno del valore "liquido" (crediti rimasti * 0.26)
+    $valoreLiquido = $lp->remaining_budget * 0.26;
+    $valoreFinale = round(max($marketCap, $valoreLiquido), 2);
 
     return Inertia::render('Societa/Finanze', [
-        'leagues' => $leagues,
-        'myData' => $myData,
-        'stats' => $stats, // Ora stats è SEMPRE un array, mai null
-        'message' => $message
+        'leagues' => $user->leagues()->get(),
+        'myData' => $lp,
+        'stats' => [
+            'valore_monetario' => $valoreFinale,
+            'asset_quality' => round($assetQuality * 100, 1),
+            'winning_efficiency' => round($winningEfficiency * 100, 1),
+            'tua_rosa_val' => $tuaRosaSum,
+            'benchmark_val' => $benchmarkTop25,
+            'tuoi_gol' => $tuoiGol,
+            'gol_top' => $golTop,
+            'premio_target' => $premioMassimo
+        ]
     ]);
 }
     public function primaveraPage() { $u = auth()->user(); $p = LeagueParticipant::where('user_id', $u->id)->first(); $players = PrimaveraRoster::where('league_id', $p->league_id)->where('user_id', $u->id)->with('player')->get(); return Inertia::render('Societa/Primavera', ['myData' => $p, 'primaveraPlayers' => $players]); }

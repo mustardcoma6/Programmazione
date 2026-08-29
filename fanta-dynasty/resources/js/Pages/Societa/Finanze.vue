@@ -33,80 +33,31 @@ const formatEuro = (value) => {
         <div class="py-12 px-4">
             <div class="max-w-4xl mx-auto space-y-6">
                 
-                <!-- 1. VALORE SOCIETARIO TOTALE (IL CUORE DEL PANNELLO) -->
-                <div class="bg-indigo-950 p-10 rounded-[3rem] shadow-2xl relative overflow-hidden border-b-8 border-indigo-800 text-center">
-                    <!-- Sfondo decorativo stile borsa -->
-                    <div class="absolute top-0 right-0 p-8 opacity-10">
-                        <span class="text-9xl font-black text-white italic">NYSE</span>
-                    </div>
-                    
-                    <h4 class="relative z-10 text-[10px] font-black text-indigo-300 uppercase tracking-[0.4em] mb-4">Market Capitalization</h4>
-                    <div class="relative z-10 flex flex-col items-center">
-                        <p class="text-7xl md:text-8xl font-black text-white font-mono tracking-tighter">
-                            {{ formatEuro(stats.valore_monetario) }}<span class="text-3xl text-indigo-400 ml-2">€</span>
-                        </p>
-                        <div class="mt-4 px-4 py-1 bg-green-500/20 border border-green-500/50 rounded-full">
-                            <span class="text-green-400 text-xs font-black uppercase tracking-widest">Ticker: {{ myData?.team_name }}</span>
-                        </div>
-                    </div>
-                </div>
+                <!-- Box Principale: Market Cap -->
+<div class="bg-indigo-950 p-10 rounded-[3rem] shadow-2xl relative border-b-8 border-indigo-800 text-center">
+    <h4 class="text-[10px] font-black text-indigo-300 uppercase tracking-[0.4em] mb-4">Potenziale Vincita Stimata</h4>
+    <p class="text-7xl font-black text-white font-mono tracking-tighter">
+        {{ formatEuro(stats.valore_monetario) }}<span class="text-3xl text-indigo-400 ml-2">€</span>
+    </p>
+    <p class="text-[10px] text-indigo-400 mt-4 uppercase font-bold">Target Prize: {{ stats.premio_target }}€</p>
+</div>
 
-                <!-- 2. GRIGLIA SOTTOSTANTE (ASSET E PERFORMANCE) -->
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    
-                    <!-- VALORE ROSA (ASSET) -->
-                    <div class="bg-white p-8 rounded-[2.5rem] shadow-xl border border-gray-100 flex flex-col justify-between">
-                        <div>
-                            <h4 class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Squad Asset Value</h4>
-                            <p class="text-4xl font-black text-gray-900 font-mono italic">
-                                {{ formatEuro(stats.valore_asset) }} <span class="text-sm">€</span>
-                            </p>
-                        </div>
-                        <div class="mt-6 pt-4 border-t border-gray-50 flex justify-between items-end">
-                            <span class="text-[10px] text-gray-400 font-bold uppercase">Based on Quotations</span>
-                            <span class="text-xs font-black text-gray-800">{{ stats.somma_quotations }} CR</span>
-                        </div>
-                    </div>
+<!-- Griglia: Asset e Efficiency -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+    <!-- Asset Quality -->
+    <div class="bg-white p-8 rounded-[2.5rem] shadow-xl border border-gray-100 text-center">
+        <h4 class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Asset Quality (Rosa)</h4>
+        <p class="text-5xl font-black text-gray-900 font-mono">{{ stats.asset_quality }}%</p>
+        <p class="text-[9px] text-gray-400 mt-2 uppercase">Rispetto ai 25 Top del Listone</p>
+    </div>
 
-                    <!-- INDEX PERFORMANCE -->
-                    <div class="bg-white p-8 rounded-[2.5rem] shadow-xl border border-gray-100 flex flex-col justify-between">
-                        <div>
-                            <h4 class="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-1">Performance Index</h4>
-                            <p class="text-5xl font-black text-blue-600 font-mono">
-                                <span class="text-2xl italic">x</span> {{ stats.index_performance }}
-                            </p>
-                        </div>
-                        <div class="mt-6 pt-4 border-t border-gray-50 flex justify-between items-end">
-                            <span class="text-[10px] text-gray-400 font-bold uppercase">Efficiency Rating</span>
-                            <span class="text-xs font-black text-blue-600">{{ stats.gol_prodotti }} GOALS/AVG</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 3. PARAMETRI TECNICI (STILE TABELLA BORSA) -->
-                <div class="bg-white rounded-[2.5rem] shadow-sm border border-gray-100 overflow-hidden">
-                    <div class="bg-gray-50 px-8 py-4 border-b border-gray-100">
-                        <h3 class="font-black text-gray-400 text-[10px] uppercase tracking-[0.2em]">Technical Analysis Parameters</h3>
-                    </div>
-                    <div class="p-8 grid grid-cols-2 md:grid-cols-4 gap-8">
-                        <div class="space-y-1">
-                            <p class="text-[9px] font-black text-gray-400 uppercase">Avg Pts</p>
-                            <p class="text-xl font-black text-gray-800 font-mono">{{ stats.media_punti }}</p>
-                        </div>
-                        <div class="space-y-1">
-                            <p class="text-[9px] font-black text-gray-400 uppercase">League Avg Goals</p>
-                            <p class="text-xl font-black text-gray-800 font-mono">{{ stats.media_gol_lega }}</p>
-                        </div>
-                        <div class="space-y-1">
-                            <p class="text-[9px] font-black text-gray-400 uppercase">Credit Cost</p>
-                            <p class="text-xl font-black text-gray-800 font-mono">0,26 €</p>
-                        </div>
-                        <div class="space-y-1">
-                            <p class="text-[9px] font-black text-gray-400 uppercase">Goal Threshold</p>
-                            <p class="text-sm font-black text-gray-800">66/70/75/80</p>
-                        </div>
-                    </div>
-                </div>
+    <!-- Winning Efficiency -->
+    <div class="bg-white p-8 rounded-[2.5rem] shadow-xl border border-gray-100 text-center">
+        <h4 class="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-1">Winning Efficiency</h4>
+        <p class="text-5xl font-black text-blue-600 font-mono">{{ stats.winning_efficiency }}%</p>
+        <p class="text-[9px] text-gray-400 mt-2 uppercase">Capacità di fare gol rispetto al 1°</p>
+    </div>
+</div>
 
                 <!-- AVVISO -->
                 <div v-if="message" class="text-center">
