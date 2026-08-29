@@ -72,70 +72,55 @@ class MarketController extends Controller
     public function release(Request $request) { $r = Roster::with('player')->findOrFail($request->roster_id); $p = LeagueParticipant::where('user_id', $r->user_id)->first(); if ($p) { $p->increment('remaining_budget', ceil(($r->release_clause ?: $r->purchase_price) / 2)); $p->decrement('years_budget', ($r->contract_years - floor($r->contract_years / 2))); } $r->delete(); return back(); }
     public function updateContract(Request $request) { $r = Roster::findOrFail($request->roster_id); $r->update(['contract_years' => $request->new_years, 'release_clause' => ($r->release_clause ?: $r->purchase_price) + $request->clausola_investment]); return back(); }
     public function history() { $p = LeagueParticipant::where('user_id', auth()->id())->first(); return Inertia::render('Market/History', ['league' => League::find($p->league_id), 'movements' => Roster::where('league_id', $p->league_id)->with(['player', 'user'])->orderBy('created_at', 'desc')->get()]); }
-    public function financesPage()
+   public function financesPage()
 {
     $user = auth()->user();
     $lp = \App\Models\LeagueParticipant::where('user_id', $user->id)->first();
     $investimentoIniziale = 130;
     $premioMassimo = 570;
-    $plusvalorePotenziale = 440;
+    $plusvalorePotenziale = 440; // 570 - 130
 
     if (!$lp || $lp->games_played == 0) {
-        return Inertia::render('Societa/Finanze', ['stats' => null]);
+        return Inertia::render('Societa/Finanze', ['stats' => null, 'message' => 'Gioca almeno una partita per calcolare i valori.']);
     }
 
-    // --- 1. CALCOLO BENCHMARK: I TOP 25 DEL LISTONE PER RUOLO ---
-    // Usiamo la colonna 'quotation' (il valore attuale del mercato)
+    // --- 1. BENCHMARK TOP 25 PER RUOLO (Il 100% del valore Rosa) ---
     $topP = \App\Models\RealPlayer::where('role', 'P')->orderBy('quotation', 'desc')->limit(3)->get()->sum('quotation');
     $topD = \App\Models\RealPlayer::where('role', 'D')->orderBy('quotation', 'desc')->limit(8)->get()->sum('quotation');
     $topC = \App\Models\RealPlayer::where('role', 'C')->orderBy('quotation', 'desc')->limit(8)->get()->sum('quotation');
     $topA = \App\Models\RealPlayer::where('role', 'A')->orderBy('quotation', 'desc')->limit(6)->get()->sum('quotation');
-    
     $benchmarkQuotazione = $topP + $topD + $topC + $topA;
 
-    // --- 2. ASSET QUALITY: TUA ROSA (Quotazioni Attuali) ---
+    // --- 2. ASSET QUALITY (Tua Rosa vs Top 25) ---
     $roster = \App\Models\Roster::where('user_id', $user->id)->with('player')->get();
-    // Sommiamo quanto valgono i tuoi giocatori OGGI nel listone
     $tuaRosaSum = $roster->sum(fn($r) => $r->player->quotation ?? 0);
-    
     $assetQuality = $tuaRosaSum / ($benchmarkQuotazione ?: 1);
 
-    // --- 3. GOAL EFFICIENCY (Confronto con la MEDIA LEGA) ---
+    // --- 3. WINNING EFFICIENCY (Classifica delle Medie Gol) ---
     $calcolaGol = function($p) {
         if ($p < 66) return 0;
         if ($p < 70) return 1;
         return 2 + floor(($p - 70) / 5);
     };
 
-    // I tuoi gol
-    $tuaMediaPunti = $myData->total_points / $myData->games_played;
-    $tuoiGol = $calcolaGol($tuaMediaPunti);
+    // Calcoliamo i gol medi di TUTTE le squadre per trovare il Leader
+    $tutti = \App\Models\LeagueParticipant::where('league_id', $lp->league_id)->get();
+    $golSquadre = $tutti->map(function($squadra) use ($calcolaGol) {
+        $mediaP = $squadra->games_played > 0 ? ($squadra->total_points / $squadra->games_played) : 0;
+        return [
+            'user_id' => $squadra->user_id,
+            'gol' => $calcolaGol($mediaP)
+        ];
+    });
 
-    // Media Gol di tutta la lega (compreso te, per avere il valore di riferimento del campionato)
-    $tutti = \App\Models\LeagueParticipant::where('league_id', $myData->league_id)->get();
-    
-    $sommaGolLega = 0;
-    $conteggio = 0;
-    foreach ($tutti as $p) {
-        if ($p->games_played > 0) {
-            $mediaP = $p->total_points / $p->games_played;
-            $sommaGolLega += $calcolaGol($mediaP);
-            $conteggio++;
-        }
-    }
-    
-    $mediaGolCampionato = $conteggio > 0 ? ($sommaGolLega / $conteggio) : 1;
+    $tuoiGol = $golSquadre->firstWhere('user_id', $user->id)['gol'];
+    $maxGolLega = $golSquadre->max('gol') ?: 1; // Chi è il migliore della lega?
 
-    // EFFICIENZA: 
-    // Se i tuoi gol sono >= alla media, la tua efficienza è 1 (100%)
-    // Se sono inferiori, è la percentuale rispetto alla media.
-    if ($tuoiGol >= $mediaGolCampionato) {
-        $winningEfficiency = 1.0; 
-    } else {
-        $winningEfficiency = $tuoiGol / $mediaGolCampionato;
-    }
+    // Efficienza = Rapporto rispetto al migliore (Il migliore è il 100%)
+    $winningEfficiency = $tuoiGol / $maxGolLega;
 
-    // --- 4. VALORE DI VENDITA FINALE ---
+    // --- 4. VALORE DI VENDITA FINALE (L'Algoritmo di Borsa) ---
+    // Prezzo = Base + (Potenziale * Qualità Rosa * Efficienza Risultati)
     $valoreFinale = $investimentoIniziale + ($plusvalorePotenziale * $assetQuality * $winningEfficiency);
 
     return Inertia::render('Societa/Finanze', [
@@ -146,9 +131,10 @@ class MarketController extends Controller
             'asset_quality_perc' => round($assetQuality * 100, 1),
             'winning_efficiency_perc' => round($winningEfficiency * 100, 1),
             'tua_rosa_val' => $tuaRosaSum,
-            'benchmark_val' => $benchmarkQuotazione, // Il valore totale della "Squadra dei Sogni"
+            'benchmark_val' => $benchmarkQuotazione,
             'tuoi_gol' => $tuoiGol,
-            'leader_gol' => $maxGolLega
+            'leader_gol' => $maxGolLega,
+            'media_punti' => round($lp->total_points / $lp->games_played, 2)
         ]
     ]);
 }
