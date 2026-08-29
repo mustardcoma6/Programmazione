@@ -33,32 +33,46 @@ const formatEuro = (value) => {
         <div class="py-12 px-4">
             <div class="max-w-4xl mx-auto space-y-6">
                 
-                <!-- Pannello Principale -->
-<div class="bg-indigo-950 p-10 rounded-[3rem] shadow-2xl relative border-b-8 border-indigo-800 text-center">
-    <h4 class="text-[10px] font-black text-indigo-300 uppercase tracking-[0.4em] mb-4">Valore di Mercato Società (Stima Vendita)</h4>
-    <p class="text-7xl font-black text-white font-mono tracking-tighter">
+                <!-- VALORE DI VENDITA (CAPITALIZZAZIONE) -->
+<div class="bg-indigo-950 p-10 rounded-[3.5rem] shadow-2xl relative border-b-8 border-indigo-800 text-center">
+    <div class="absolute top-6 right-10 flex items-center gap-2">
+        <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+        <span class="text-[9px] font-black text-indigo-300 uppercase tracking-widest">Live Valuation</span>
+    </div>
+
+    <h4 class="text-[10px] font-black text-indigo-300 uppercase tracking-[0.4em] mb-4">Stima Prezzo di Vendita Società</h4>
+    <p class="text-7xl md:text-8xl font-black text-white font-mono tracking-tighter">
         {{ formatEuro(stats.valore_monetario) }}<span class="text-3xl text-indigo-400 ml-2">€</span>
     </p>
-    <div class="mt-4 flex justify-center gap-4 text-[10px] font-bold uppercase">
-        <span class="text-indigo-400">Investimento Iniziale: {{ stats.investimento }}€</span>
-        <span class="text-green-400">Target Prize: {{ stats.target }}€</span>
-    </div>
+    <p class="text-[10px] text-indigo-400 mt-4 uppercase font-bold italic">
+        Basato su Asset Quality e Goal Strength rispetto alla Lega
+    </p>
 </div>
 
-<!-- Griglia Analisi -->
+<!-- DETTAGLI INDICI -->
 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-    <!-- Valore Asset -->
+    <!-- Asset Quality -->
     <div class="bg-white p-8 rounded-[2.5rem] shadow-xl border border-gray-100">
-        <h4 class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Valore Asset (Giocatori)</h4>
-        <p class="text-4xl font-black text-gray-900 font-mono">{{ formatEuro(stats.valore_asset) }} €</p>
-        <p class="text-[9px] text-gray-400 mt-2 uppercase">Valore reale basato sulle quotazioni attuali</p>
+        <div class="flex justify-between items-start mb-4">
+            <h4 class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Asset Quality</h4>
+            <span class="text-xs font-black text-gray-900">{{ stats.asset_quality_perc }}%</span>
+        </div>
+        <div class="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
+            <div class="bg-indigo-600 h-full transition-all duration-1000" :style="{ width: stats.asset_quality_perc + '%' }"></div>
+        </div>
+        <p class="text-[9px] text-gray-400 mt-4 uppercase italic">Tua Rosa ({{ stats.tua_rosa_val }} cr) vs Top 25 Listone ({{ stats.benchmark_val }} cr)</p>
     </div>
 
-    <!-- Plusvalore Merito -->
+    <!-- Goal Strength -->
     <div class="bg-white p-8 rounded-[2.5rem] shadow-xl border border-gray-100">
-        <h4 class="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-1">Plusvalore (Potenziale Profitto)</h4>
-        <p class="text-4xl font-black text-blue-600 font-mono">+ {{ formatEuro(stats.plusvalore) }} €</p>
-        <p class="text-[9px] text-gray-400 mt-2 uppercase">Basato sulla Winning Efficiency ({{ stats.winning_efficiency }}%)</p>
+        <div class="flex justify-between items-start mb-4">
+            <h4 class="text-[10px] font-black text-blue-500 uppercase tracking-widest">Goal Strength</h4>
+            <span class="text-xs font-black text-blue-600">{{ stats.goal_strength_perc }}%</span>
+        </div>
+        <div class="w-full bg-blue-50 h-2 rounded-full overflow-hidden border border-blue-100">
+            <div class="bg-blue-500 h-full transition-all duration-1000" :style="{ width: Math.min(stats.goal_strength_perc, 100) + '%' }"></div>
+        </div>
+        <p class="text-[9px] text-gray-400 mt-4 uppercase italic">Tuoi Gol ({{ stats.tuoi_gol }}) vs Media Lega ({{ stats.media_gol_lega }})</p>
     </div>
 </div>
 

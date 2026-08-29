@@ -72,64 +72,71 @@ class MarketController extends Controller
     public function release(Request $request) { $r = Roster::with('player')->findOrFail($request->roster_id); $p = LeagueParticipant::where('user_id', $r->user_id)->first(); if ($p) { $p->increment('remaining_budget', ceil(($r->release_clause ?: $r->purchase_price) / 2)); $p->decrement('years_budget', ($r->contract_years - floor($r->contract_years / 2))); } $r->delete(); return back(); }
     public function updateContract(Request $request) { $r = Roster::findOrFail($request->roster_id); $r->update(['contract_years' => $request->new_years, 'release_clause' => ($r->release_clause ?: $r->purchase_price) + $request->clausola_investment]); return back(); }
     public function history() { $p = LeagueParticipant::where('user_id', auth()->id())->first(); return Inertia::render('Market/History', ['league' => League::find($p->league_id), 'movements' => Roster::where('league_id', $p->league_id)->with(['player', 'user'])->orderBy('created_at', 'desc')->get()]); }
-   public function financesPage()
+    public function financesPage()
 {
     $user = auth()->user();
     $lp = \App\Models\LeagueParticipant::where('user_id', $user->id)->first();
+    
     $investimentoIniziale = 130;
     $premioMassimo = 570;
-    $euroPerCredito = 0.26;
+    $plusvalorePotenziale = $premioMassimo - $investimentoIniziale; // 440€
 
     if (!$lp || $lp->games_played == 0) {
-        return Inertia::render('Societa/Finanze', ['stats' => null, 'message' => 'Dati insufficienti.']);
+        return Inertia::render('Societa/Finanze', ['stats' => null, 'message' => 'Gioca una partita per il calcolo.']);
     }
 
-    // --- 1. VALORE TANGIBILE (Asset Reale) ---
-    // Quanto valgono i tuoi giocatori oggi se convertiti in Euro?
+    // --- 1. CALCOLO BENCHMARK (I migliori 25 possibili nel listone) ---
+    // Sommiamo le quotazioni dei top: 3 Portieri, 8 Difensori, 8 Centrocampisti, 6 Attaccanti
+    $topP = \App\Models\RealPlayer::where('role', 'P')->orderBy('quotation', 'desc')->limit(3)->sum('quotation');
+    $topD = \App\Models\RealPlayer::where('role', 'D')->orderBy('quotation', 'desc')->limit(8)->sum('quotation');
+    $topC = \App\Models\RealPlayer::where('role', 'C')->orderBy('quotation', 'desc')->limit(8)->sum('quotation');
+    $topA = \App\Models\RealPlayer::where('role', 'A')->orderBy('quotation', 'desc')->limit(6)->sum('quotation');
+    $benchmarkTop25 = $topP + $topD + $topC + $topA;
+
+    // --- 2. ASSET QUALITY INDEX ---
     $roster = \App\Models\Roster::where('user_id', $user->id)->with('player')->get();
     $tuaRosaSum = $roster->sum(fn($r) => $r->player->quotation ?? 0);
-    $valoreAssetEuro = $tuaRosaSum * $euroPerCredito;
+    $assetQualityIndex = $tuaRosaSum / ($benchmarkTop25 ?: 1);
 
-    // --- 2. WINNING EFFICIENCY (Capacità di fare punti) ---
+    // --- 3. GOAL STRENGTH INDEX ---
     $calcolaGol = function($p) {
         if ($p < 66) return 0;
         if ($p < 70) return 1;
         return 2 + floor(($p - 70) / 5);
     };
 
+    // I tuoi gol
     $tuaMediaP = $lp->total_points / $lp->games_played;
     $tuoiGol = $calcolaGol($tuaMediaP);
 
-    $topParticipant = \App\Models\LeagueParticipant::where('league_id', $lp->league_id)
-        ->orderBy('league_points', 'desc')
-        ->orderBy('total_points', 'desc')
-        ->first();
-    $mediaP_Top = $topParticipant->total_points / ($topParticipant->games_played ?: 1);
-    $golTop = $calcolaGol($mediaP_Top) ?: 1;
+    // Media gol della lega
+    $tutti = \App\Models\LeagueParticipant::where('league_id', $lp->league_id)->get();
+    $sommaGolLega = 0;
+    foreach ($tutti as $p) {
+        $mediaP = $p->games_played > 0 ? ($p->total_points / $p->games_played) : 0;
+        $sommaGolLega += $calcolaGol($mediaP);
+    }
+    $mediaGolLega = $sommaGolLega / count($tutti);
+    if ($mediaGolLega <= 0) $mediaGolLega = 1;
 
-    $winningEfficiency = $tuoiGol / $golTop;
+    $goalStrengthIndex = $tuoiGol / $mediaGolLega;
 
-    // --- 3. CALCOLO VALORE SOCIETARIO (PREZZO DI VENDITA) ---
-    // Il profitto potenziale è la differenza tra il premio e l'investimento
-    $profittoPotenziale = $premioMassimo - $investimentoIniziale; // 440€
-    
-    // Il valore finale è: Valore dei giocatori + (Profitto potenziale pesato sulla tua forza)
-    $plusvaloreMerito = $profittoPotenziale * $winningEfficiency;
-    
-    // Aggiungiamo una protezione: il valore non può scendere sotto il valore asset + crediti residui
-    $valoreLiquido = ($lp->remaining_budget * $euroPerCredito);
-    $prezzoDiVendita = round($valoreAssetEuro + $plusvaloreMerito + $valoreLiquido, 2);
+    // --- 4. CALCOLO VALORE DI VENDITA FINALE ---
+    // Formula: Base + (Potenziale * Qualità Rosa * Forza Realizzativa)
+    $valoreDiVendita = $investimentoIniziale + ($plusvalorePotenziale * $assetQualityIndex * $goalStrengthIndex);
 
     return Inertia::render('Societa/Finanze', [
         'leagues' => $user->leagues()->get(),
         'myData' => $lp,
         'stats' => [
-            'valore_monetario' => $prezzoDiVendita,
-            'valore_asset' => round($valoreAssetEuro, 2),
-            'plusvalore' => round($plusvaloreMerito, 2),
-            'winning_efficiency' => round($winningEfficiency * 100, 1),
-            'investimento' => $investimentoIniziale,
-            'target' => $premioMassimo
+            'valore_monetario' => round($valoreDiVendita, 2),
+            'asset_quality_perc' => round($assetQualityIndex * 100, 1),
+            'goal_strength_perc' => round($goalStrengthIndex * 100, 1),
+            'tua_rosa_val' => $tuaRosaSum,
+            'benchmark_val' => $benchmarkTop25,
+            'tuoi_gol' => $tuoiGol,
+            'media_gol_lega' => round($mediaGolLega, 2),
+            'investimento' => $investimentoIniziale
         ]
     ]);
 }
