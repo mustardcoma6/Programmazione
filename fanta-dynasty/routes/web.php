@@ -69,6 +69,11 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/leagues/join', [LeagueController::class, 'join'])->name('leagues.join');
     Route::post('/leagues/join', [LeagueController::class, 'joinStore'])->name('leagues.join.store');
     Route::post('/leagues/{league}/toggle-market', [LeagueController::class, 'toggleMarket'])->name('leagues.market.toggle');
+// ROTTA TEMPORANEA PER PULIRE IL GRAFICO
+   Route::get('/reset-grafico', function () {
+    \App\Models\MarketValueHistory::truncate();
+    return "Database pulito con successo! Torna in Home.";
+    });
 });
 
 require __DIR__.'/auth.php';
