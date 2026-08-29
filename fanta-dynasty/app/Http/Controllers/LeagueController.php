@@ -95,13 +95,15 @@ class LeagueController extends Controller
 
     // 4. AGGIORNIAMO I DATI DELLE SQUADRE NEL DATABASE
     foreach ($request->classifica as $data) {
-        $participant = \App\Models\LeagueParticipant::find($data['id']);
-        if ($participant) {
-            $participant->update([
-                'league_points' => $data['league_points'],
-                'total_points' => $data['total_points'],
-                'games_played' => $data['games_played'],
-            ]);
+        $lp = \App\Models\LeagueParticipant::find($data['id']);
+        if ($lp) {
+            // Assegnazione manuale dei valori per essere sicuri
+            $lp->league_points = $data['league_points'];
+            $lp->total_points = $data['total_points'];
+            $lp->games_played = $data['games_played'];
+            
+            // Forza il salvataggio sul database
+            $lp->save();
         }
     }
 

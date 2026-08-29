@@ -3,9 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class LeagueParticipant extends Model
 {
+    use HasFactory;
+
     protected $fillable = [
         'league_id', 
         'user_id', 
@@ -21,5 +24,10 @@ class LeagueParticipant extends Model
 
     public function roster() {
         return $this->hasMany(Roster::class, 'user_id', 'user_id');
+    }
+
+    public function league()
+    {
+        return $this->belongsTo(League::class);
     }
 }
