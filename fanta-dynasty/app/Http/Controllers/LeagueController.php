@@ -74,16 +74,41 @@ class LeagueController extends Controller
     }
 
     public function updateCampionato(Request $request) 
-    {
-        foreach ($request->classifica as $data) {
-            LeagueParticipant::where('id', $data['id'])->update([
+{
+    // ... (tutta la parte iniziale dei calcoli che abbiamo fatto prima: benchmark, euro, ecc.) ...
+
+    foreach ($request->classifica as $data) {
+        $lp = \App\Models\LeagueParticipant::find($data['id']);
+        if ($lp) {
+            // 1. Aggiorniamo i dati attuali della squadra
+            $lp->update([
                 'league_points' => $data['league_points'],
                 'total_points' => $data['total_points'],
                 'games_played' => $data['games_played'],
             ]);
+
+            // 2. Calcoliamo il valore attuale (usando la formula di borsa)
+            // (Assumiamo che tu abbia già calcolato $valoreAttuale con la formula Asset * Efficiency)
+            // $valoreAttuale = ... (la logica che abbiamo scritto nel messaggio precedente)
+
+            // 3. SALVIAMO NELLA STORIA usando il numero di partite come "Giornata"
+            if ($lp->games_played > 0) {
+                \App\Models\MarketValueHistory::updateOrCreate(
+                    [
+                        'user_id' => $lp->user_id,
+                        'league_id' => $lp->league_id,
+                        'matchday' => $lp->games_played // <-- Qui usiamo il numero che scrivi tu!
+                    ],
+                    [
+                        'value' => round($valoreAttuale, 2),
+                        'recorded_at' => now()
+                    ]
+                );
+            }
         }
-        return redirect()->back()->with('message', 'Aggiornato!');
     }
+    return redirect()->back()->with('message', 'Classifica e Grafici aggiornati!');
+}
 
     public function rankingIndex()
     {
