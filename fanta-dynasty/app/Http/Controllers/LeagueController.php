@@ -74,7 +74,7 @@ class LeagueController extends Controller
     }
 
     public function updateCampionato(Request $request) 
-{
+    {
     // ... (tutta la parte iniziale dei calcoli che abbiamo fatto prima: benchmark, euro, ecc.) ...
 
     foreach ($request->classifica as $data) {
@@ -108,7 +108,7 @@ class LeagueController extends Controller
         }
     }
     return redirect()->back()->with('message', 'Classifica e Grafici aggiornati!');
-}
+    }
 
     public function rankingIndex()
     {
