@@ -100,21 +100,40 @@ class MarketController extends Controller
     
     $assetQuality = $tuaRosaSum / ($benchmarkQuotazione ?: 1);
 
-    // --- 3. WINNING EFFICIENCY (Confronto Gol col Leader) ---
+    // --- 3. GOAL EFFICIENCY (Confronto con la MEDIA LEGA) ---
     $calcolaGol = function($p) {
         if ($p < 66) return 0;
         if ($p < 70) return 1;
         return 2 + floor(($p - 70) / 5);
     };
 
-    $tuoiGol = $calcolaGol($lp->total_points / $lp->games_played);
+    // I tuoi gol
+    $tuaMediaPunti = $myData->total_points / $myData->games_played;
+    $tuoiGol = $calcolaGol($tuaMediaPunti);
 
-    $maxGolLega = \App\Models\LeagueParticipant::where('league_id', $lp->league_id)
-        ->get()
-        ->map(fn($p) => $calcolaGol($p->games_played > 0 ? ($p->total_points / $p->games_played) : 0))
-        ->max() ?: 1;
+    // Media Gol di tutta la lega (compreso te, per avere il valore di riferimento del campionato)
+    $tutti = \App\Models\LeagueParticipant::where('league_id', $myData->league_id)->get();
+    
+    $sommaGolLega = 0;
+    $conteggio = 0;
+    foreach ($tutti as $p) {
+        if ($p->games_played > 0) {
+            $mediaP = $p->total_points / $p->games_played;
+            $sommaGolLega += $calcolaGol($mediaP);
+            $conteggio++;
+        }
+    }
+    
+    $mediaGolCampionato = $conteggio > 0 ? ($sommaGolLega / $conteggio) : 1;
 
-    $winningEfficiency = $tuoiGol / $maxGolLega;
+    // EFFICIENZA: 
+    // Se i tuoi gol sono >= alla media, la tua efficienza è 1 (100%)
+    // Se sono inferiori, è la percentuale rispetto alla media.
+    if ($tuoiGol >= $mediaGolCampionato) {
+        $winningEfficiency = 1.0; 
+    } else {
+        $winningEfficiency = $tuoiGol / $mediaGolCampionato;
+    }
 
     // --- 4. VALORE DI VENDITA FINALE ---
     $valoreFinale = $investimentoIniziale + ($plusvalorePotenziale * $assetQuality * $winningEfficiency);
