@@ -78,48 +78,45 @@ class MarketController extends Controller
     $lp = \App\Models\LeagueParticipant::where('user_id', $user->id)->first();
     $investimentoIniziale = 130;
     $premioMassimo = 570;
-    $plusvalorePotenziale = 440; // 570 - 130
+    $plusvalorePotenziale = 440;
 
     if (!$lp || $lp->games_played == 0) {
         return Inertia::render('Societa/Finanze', ['stats' => null]);
     }
 
-    // --- 1. TOP 25 PER RUOLO (3-8-8-6) ---
-    $topP = \App\Models\RealPlayer::where('role', 'P')->orderBy('quotation', 'desc')->limit(3)->sum('quotation');
-    $topD = \App\Models\RealPlayer::where('role', 'D')->orderBy('quotation', 'desc')->limit(8)->sum('quotation');
-    $topC = \App\Models\RealPlayer::where('role', 'C')->orderBy('quotation', 'desc')->limit(8)->sum('quotation');
-    $topA = \App\Models\RealPlayer::where('role', 'A')->orderBy('quotation', 'desc')->limit(6)->sum('quotation');
+    // --- 1. CALCOLO BENCHMARK: I TOP 25 DEL LISTONE PER RUOLO ---
+    // Usiamo la colonna 'quotation' (il valore attuale del mercato)
+    $topP = \App\Models\RealPlayer::where('role', 'P')->orderBy('quotation', 'desc')->limit(3)->get()->sum('quotation');
+    $topD = \App\Models\RealPlayer::where('role', 'D')->orderBy('quotation', 'desc')->limit(8)->get()->sum('quotation');
+    $topC = \App\Models\RealPlayer::where('role', 'C')->orderBy('quotation', 'desc')->limit(8)->get()->sum('quotation');
+    $topA = \App\Models\RealPlayer::where('role', 'A')->orderBy('quotation', 'desc')->limit(6)->get()->sum('quotation');
+    
     $benchmarkQuotazione = $topP + $topD + $topC + $topA;
 
-    // --- 2. ASSET QUALITY (Quanto sei vicino alla rosa perfetta) ---
+    // --- 2. ASSET QUALITY: TUA ROSA (Quotazioni Attuali) ---
     $roster = \App\Models\Roster::where('user_id', $user->id)->with('player')->get();
+    // Sommiamo quanto valgono i tuoi giocatori OGGI nel listone
     $tuaRosaSum = $roster->sum(fn($r) => $r->player->quotation ?? 0);
-    $assetQuality = $tuaRosaSum / $benchmarkQuotazione;
+    
+    $assetQuality = $tuaRosaSum / ($benchmarkQuotazione ?: 1);
 
-    // --- 3. WINNING EFFICIENCY (Confronto con il Leader) ---
+    // --- 3. WINNING EFFICIENCY (Confronto Gol col Leader) ---
     $calcolaGol = function($p) {
         if ($p < 66) return 0;
         if ($p < 70) return 1;
         return 2 + floor(($p - 70) / 5);
     };
 
-    // Calcoliamo i gol medi di tutti i partecipanti
-    $partecipanti = \App\Models\LeagueParticipant::where('league_id', $lp->league_id)->get();
-    $golSquadre = $partecipanti->map(function($p) use ($calcolaGol) {
-        $media = $p->games_played > 0 ? ($p->total_points / $p->games_played) : 0;
-        return [
-            'user_id' => $p->user_id,
-            'gol' => $calcolaGol($media)
-        ];
-    });
+    $tuoiGol = $calcolaGol($lp->total_points / $lp->games_played);
 
-    $tuoiGol = $golSquadre->firstWhere('user_id', $user->id)['gol'];
-    $maxGolLega = $golSquadre->max('gol') ?: 1; // Il benchmark è chi segna di più
+    $maxGolLega = \App\Models\LeagueParticipant::where('league_id', $lp->league_id)
+        ->get()
+        ->map(fn($p) => $calcolaGol($p->games_played > 0 ? ($p->total_points / $p->games_played) : 0))
+        ->max() ?: 1;
 
-    // Efficienza: Se tu sei il leader dei gol, sei al 100%
     $winningEfficiency = $tuoiGol / $maxGolLega;
 
-    // --- 4. VALORE DI MERCATO FINALE ---
+    // --- 4. VALORE DI VENDITA FINALE ---
     $valoreFinale = $investimentoIniziale + ($plusvalorePotenziale * $assetQuality * $winningEfficiency);
 
     return Inertia::render('Societa/Finanze', [
@@ -130,10 +127,9 @@ class MarketController extends Controller
             'asset_quality_perc' => round($assetQuality * 100, 1),
             'winning_efficiency_perc' => round($winningEfficiency * 100, 1),
             'tua_rosa_val' => $tuaRosaSum,
-            'benchmark_val' => $benchmarkQuotazione,
+            'benchmark_val' => $benchmarkQuotazione, // Il valore totale della "Squadra dei Sogni"
             'tuoi_gol' => $tuoiGol,
-            'leader_gol' => $maxGolLega,
-            'investimento' => $investimentoIniziale
+            'leader_gol' => $maxGolLega
         ]
     ]);
 }
