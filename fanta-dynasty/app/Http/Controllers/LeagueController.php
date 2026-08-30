@@ -75,14 +75,9 @@ class LeagueController extends Controller
 
     public function updateCampionato(Request $request) 
     {
-    // ... (Mantieni tutta la parte iniziale dei parametri e benchmark che abbiamo scritto prima) ...
+    // 1. Parametri per il valore monetario
     $investimentoBase = 130;
     $plusvalorePotenziale = 440;
-    $topP = \App\Models\RealPlayer::where('role', 'P')->orderBy('quotation', 'desc')->limit(3)->get()->sum('quotation');
-    $topD = \App\Models\RealPlayer::where('role', 'D')->orderBy('quotation', 'desc')->limit(8)->get()->sum('quotation');
-    $topC = \App\Models\RealPlayer::where('role', 'C')->orderBy('quotation', 'desc')->limit(8)->get()->sum('quotation');
-    $topA = \App\Models\RealPlayer::where('role', 'A')->orderBy('quotation', 'desc')->limit(6)->get()->sum('quotation');
-    $benchmarkQuotazione = ($topP + $topD + $topC + $topA) ?: 1;
 
     $calcolaGol = function($p) {
         if ($p < 66) return 0;
@@ -90,6 +85,7 @@ class LeagueController extends Controller
         return 2 + floor(($p - 70) / 5);
     };
 
+    // 2. AGGIORNAMENTO DATI SQUADRE
     foreach ($request->classifica as $data) {
         $lp = \App\Models\LeagueParticipant::find($data['id']);
         if ($lp) {
@@ -98,37 +94,51 @@ class LeagueController extends Controller
                 'total_points' => $data['total_points'],
                 'games_played' => $data['games_played'],
             ]);
-
-            // RICALCOLO VALORE PER IL GRAFICO
-            $rosterSum = \App\Models\Roster::where('user_id', $lp->user_id)->where('league_id', $lp->league_id)
-                ->with('player')->get()->sum(fn($r) => $r->player->quotation ?? 0);
-            $assetQuality = $rosterSum / $benchmarkQuotazione;
-
-            // Per l'efficienza qui usiamo un calcolo semplificato o quello della lega
-            // (Per brevità riuso la logica precedente)
-            $tuoiGol = $calcolaGol($lp->games_played > 0 ? ($lp->total_points / $lp->games_played) : 0);
-            
-            // Supponiamo che tu sia il leader per questo test, o recupera il max della lega
-            $valoreAttuale = $investimentoBase + ($plusvalorePotenziale * $assetQuality * 1.0); 
-
-            if ($lp->games_played > 0) {
-                // 1. SALVA O AGGIORNA IL DATO ATTUALE
-                \App\Models\MarketValueHistory::updateOrCreate(
-                    ['user_id' => $lp->user_id, 'league_id' => $lp->league_id, 'matchday' => $lp->games_played],
-                    ['value' => round($valoreAttuale, 2), 'recorded_at' => now()]
-                );
-
-                // 2. PULIZIA "FUTURO" (La parte nuova!)
-                // Cancella tutti i dati che hanno una giornata superiore a quella attuale
-                \App\Models\MarketValueHistory::where('user_id', $lp->user_id)
-                    ->where('league_id', $lp->league_id)
-                    ->where('matchday', '>', $lp->games_played)
-                    ->delete();
-            }
         }
     }
 
-    return redirect()->back()->with('message', 'Dati salvati e cronologia pulita!');
+    // 3. RICALCOLO BENCHMARK (Top 25 Listone)
+    $topP = \App\Models\RealPlayer::where('role', 'P')->orderBy('quotation', 'desc')->limit(3)->get()->sum('quotation');
+    $topD = \App\Models\RealPlayer::where('role', 'D')->orderBy('quotation', 'desc')->limit(8)->get()->sum('quotation');
+    $topC = \App\Models\RealPlayer::where('role', 'C')->orderBy('quotation', 'desc')->limit(8)->get()->sum('quotation');
+    $topA = \App\Models\RealPlayer::where('role', 'A')->orderBy('quotation', 'desc')->limit(6)->get()->sum('quotation');
+    $benchmarkVal = ($topP + $topD + $topC + $topA) ?: 1;
+
+    // 4. TROVA LEADER GOL DELLA LEGA (Dopo gli aggiornamenti)
+    $firstTeam = \App\Models\LeagueParticipant::find($request->classifica[0]['id']);
+    $tutti = \App\Models\LeagueParticipant::where('league_id', $firstTeam->league_id)->get();
+    $maxGolLega = $tutti->map(fn($s) => $calcolaGol($s->games_played > 0 ? ($s->total_points / $s->games_played) : 0))->max() ?: 1;
+
+    // 5. SALVATAGGIO STORIA E PULIZIA "ORFANI"
+    foreach ($tutti as $s) {
+        // Calcolo valore attuale
+        $rosterSum = \App\Models\Roster::where('user_id', $s->user_id)->where('league_id', $s->league_id)
+            ->with('player')->get()->sum(fn($r) => $r->player->quotation ?? 0);
+        $assetQual = $rosterSum / $benchmarkVal;
+        $mediaP = $s->games_played > 0 ? ($s->total_points / $s->games_played) : 0;
+        $winEff = $calcolaGol($mediaP) / $maxGolLega;
+
+        $valoreAttuale = round($investimentoBase + ($plusvalorePotenziale * $assetQual * $winEff), 2);
+
+        if ($s->games_played > 0) {
+            // Salva il punto attuale
+            \App\Models\MarketValueHistory::updateOrCreate(
+                ['user_id' => $s->user_id, 'league_id' => $s->league_id, 'matchday' => $s->games_played],
+                ['value' => $valoreAttuale, 'recorded_at' => now()]
+            );
+
+            // CANCELLA TUTTI I PUNTI FUTURI (Se sei tornato indietro con le giornate)
+            \App\Models\MarketValueHistory::where('user_id', $s->user_id)
+                ->where('league_id', $s->league_id)
+                ->where('matchday', '>', $s->games_played)
+                ->delete();
+        } else {
+            // Se le partite sono 0, pulisci tutto per quella squadra
+            \App\Models\MarketValueHistory::where('user_id', $s->user_id)->delete();
+        }
+    }
+
+    return redirect()->back()->with('message', 'Classifica aggiornata e cronologia sincronizzata!');
     }
 
     public function rankingIndex()
