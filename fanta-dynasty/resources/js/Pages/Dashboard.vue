@@ -86,6 +86,34 @@ const strategyAdvice = computed(() => {
                     <!-- COLONNA SINISTRA (Grande) -->
                     <div class="lg:col-span-2 space-y-8">
                         
+                        <!-- NUOVA RIGA: VALORE E PROBABILITÀ -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <!-- Box Valore Societario -->
+    <div class="bg-indigo-950 p-8 rounded-[2rem] shadow-xl border-b-8 border-indigo-800 text-center relative overflow-hidden">
+        <h4 class="text-[10px] font-black text-indigo-300 uppercase tracking-widest mb-2">Valore Societario</h4>
+        <p class="text-5xl font-black text-white font-mono italic">
+            {{ stats?.valore_societario }}<span class="text-xl ml-1 text-indigo-400">€</span>
+        </p>
+        <p class="text-[9px] text-indigo-400 mt-2 uppercase font-bold tracking-tighter">Stima prezzo di vendita</p>
+    </div>
+
+    <!-- Box Probabilità Vittoria -->
+    <div class="bg-white p-8 rounded-[2rem] shadow-lg border border-gray-100 flex flex-col justify-center text-center">
+        <h4 class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Probabilità Titolo</h4>
+        <div class="relative inline-flex items-center justify-center">
+            <p class="text-5xl font-black text-gray-900">{{ stats?.probabilita_vittoria }}%</p>
+        </div>
+        <!-- Piccola barra di progresso sotto la percentuale -->
+        <div class="w-24 h-1.5 bg-gray-100 rounded-full mx-auto mt-3 overflow-hidden">
+            <div class="bg-green-500 h-full transition-all duration-1000" :style="{ width: stats?.probabilita_vittoria + '%' }"></div>
+        </div>
+    </div>
+</div>
+
+<!-- (Sotto questa riga deve rimanere quella vecchia con Top Player e Consiglio) -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+    <!-- ... qui c'è il tuo codice esistente di Top Player e Consiglio ... -->
+</div>
                         <!-- ANALISI E CONSIGLI (Dati Top Player Corretti) -->
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div class="bg-white p-8 rounded-[2rem] shadow-lg border border-gray-100 flex flex-col justify-center text-center">

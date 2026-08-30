@@ -22,49 +22,61 @@ class LeagueController extends Controller
 
         if ($firstLeague) {
             $myData = LeagueParticipant::where('league_id', $firstLeague->id)->where('user_id', $user->id)->first();
-            $myPlayers = Roster::where('league_id', $firstLeague->id)->where('user_id', $user->id)->with('player')->get();
-            $allParticipants = LeagueParticipant::where('league_id', $firstLeague->id)->get();
             
-            // Classifica Campionato
             $classifica = LeagueParticipant::where('league_id', $firstLeague->id)
                 ->with('user')
                 ->orderBy('league_points', 'desc')
                 ->orderBy('total_points', 'desc')
                 ->get();
 
-            // Calcolo Posizione Classifica
+            // --- CALCOLO VALORI FINANZIARI PER LA HOME ---
+            $topP = RealPlayer::where('role', 'P')->orderBy('quotation', 'desc')->limit(3)->get()->sum('quotation');
+            $topD = RealPlayer::where('role', 'D')->orderBy('quotation', 'desc')->limit(8)->get()->sum('quotation');
+            $topC = RealPlayer::where('role', 'C')->orderBy('quotation', 'desc')->limit(8)->get()->sum('quotation');
+            $topA = RealPlayer::where('role', 'A')->orderBy('quotation', 'desc')->limit(6)->get()->sum('quotation');
+            $benchmark = ($topP + $topD + $topC + $topA) ?: 1;
+
+            $calcolaGol = function($p) {
+                if ($p < 66) return 0;
+                if ($p < 70) return 1;
+                return 2 + floor(($p - 70) / 5);
+            };
+
+            $tutti = LeagueParticipant::where('league_id', $firstLeague->id)->get();
+            $maxGolLega = $tutti->map(fn($s) => $calcolaGol($s->games_played > 0 ? ($s->total_points / $s->games_played) : 0))->max() ?: 1;
+
+            // Dati specifici dell'utente
+            $rosterSum = Roster::where('user_id', $user->id)->where('league_id', $firstLeague->id)->with('player')->get()->sum(fn($r) => $r->player->quotation ?? 0);
+            $assetQual = $rosterSum / $benchmark;
+            $mediaP = $myData->games_played > 0 ? ($myData->total_points / $myData->games_played) : 0;
+            $winEff = $calcolaGol($mediaP) / $maxGolLega;
+
+            // Valore Monetario (stessa formula della pagina finanze)
+            $valoreAttuale = 130 + (440 * $assetQual * $winEff);
+            
+            // Probabilità di Vincita (Asset Quality * Efficiency)
+            $probabilitaVittoria = ($assetQual * $winEff) * 100;
+
+            // --- FINE CALCOLI ---
+
             $posClassifica = $classifica->search(fn($i) => $i->user_id === $user->id);
             $generalRank = ($posClassifica !== false) ? ($posClassifica + 1) : '-';
 
-            // Calcolo Posizione Crediti
             $creditRank = LeagueParticipant::where('league_id', $firstLeague->id)
                 ->where('remaining_budget', '>', $myData->remaining_budget)
                 ->count() + 1;
 
-            // LOGICA TOP PLAYER (Ripristinata!)
-            $topSigning = Roster::where('user_id', $user->id)
-                ->where('league_id', $firstLeague->id)
-                ->with('player')
-                ->orderBy('purchase_price', 'desc')
-                ->first();
+            $topSigning = Roster::where('user_id', $user->id)->where('league_id', $firstLeague->id)->with('player')->orderBy('purchase_price', 'desc')->first();
 
             $stats = [
                 'generalRank' => $generalRank,
                 'rank' => $creditRank,
                 'topPlayer' => $topSigning ? $topSigning->player->name : 'Nessuno',
                 'topPrice' => $topSigning ? $topSigning->purchase_price : 0,
+                'valore_societario' => round($valoreAttuale, 2),
+                'probabilita_vittoria' => round($probabilitaVittoria, 1)
             ];
         }
-
-        return Inertia::render('Dashboard', [
-            'leagues' => $leagues, 
-            'myData' => $myData, 
-            'myPlayers' => $myPlayers, 
-            'allParticipants' => $allParticipants, 
-            'stats' => $stats, 
-            'classifica' => $classifica 
-        ]);
-    }
 
     public function editCampionato() 
     {
