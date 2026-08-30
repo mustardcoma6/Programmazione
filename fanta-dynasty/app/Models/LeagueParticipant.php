@@ -2,32 +2,27 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
 class LeagueParticipant extends Model
 {
     use HasFactory;
 
+    // Queste sono le "porte aperte" del database. 
+    // Se un nome manca qui, Laravel NON salverà mai quel dato.
     protected $fillable = [
-        'league_id', 
-        'user_id', 
-        'team_name', 
-        'remaining_budget', 
+        'league_id',
+        'user_id',
+        'team_name',
+        'remaining_budget',
         'years_budget',
-        'remaining_primavera_budget' // <--- SBLOCCATO
+        'league_points',  // ASSICURATI CHE CI SIA
+        'total_points',   // ASSICURATI CHE CI SIA
+        'games_played',   // ASSICURATI CHE CI SIA
     ];
 
     public function user() {
-        return $this->belongsTo(User::class, 'user_id');
-    }
-
-    public function roster() {
-        return $this->hasMany(Roster::class, 'user_id', 'user_id');
-    }
-
-    public function league()
-    {
-        return $this->belongsTo(League::class);
+        return $this->belongsTo(User::class);
     }
 }

@@ -85,15 +85,17 @@ class LeagueController extends Controller
         return 2 + floor(($p - 70) / 5);
     };
 
-    // 2. AGGIORNAMENTO DATI SQUADRE
+    // 2. AGGIORNAMENTO DATI SQUADRE (Versione Esplicita)
     foreach ($request->classifica as $data) {
         $lp = \App\Models\LeagueParticipant::find($data['id']);
         if ($lp) {
-            $lp->update([
-                'league_points' => $data['league_points'],
-                'total_points' => $data['total_points'],
-                'games_played' => $data['games_played'],
-            ]);
+            // Assegniamo i valori uno per uno per bypassare ogni blocco
+            $lp->league_points = $data['league_points'];
+            $lp->total_points  = $data['total_points'];
+            $lp->games_played  = $data['games_played'];
+            
+            // Salvataggio forzato
+            $lp->save();
         }
     }
 
