@@ -74,6 +74,10 @@ Route::middleware(['auth'])->group(function () {
     \App\Models\MarketValueHistory::truncate();
     return "Database pulito con successo! Torna in Home.";
     });
+    Route::get('/clear-history', function () {
+    \App\Models\MarketValueHistory::truncate();
+    return "Tutta la cronologia del grafico è stata eliminata. Ora torna in gestione e salva per rigenerare solo il punto G1.";
+    });
 });
 
 require __DIR__.'/auth.php';
