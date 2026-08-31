@@ -7,6 +7,7 @@ import {
     CategoryScale, LinearScale, PointElement, Filler 
 } from 'chart.js';
 
+// Registrazione componenti Chart.js
 ChartJS.register(Title, Tooltip, Legend, LineElement, CategoryScale, LinearScale, PointElement, Filler);
 
 const props = defineProps({
@@ -20,7 +21,10 @@ const props = defineProps({
 
 const formatEuro = (value) => {
     if (!value) return '0,00';
-    return Number(value).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return Number(value).toLocaleString('it-IT', { 
+        minimumFractionDigits: 2, 
+        maximumFractionDigits: 2 
+    });
 };
 
 const chartData = {
@@ -28,12 +32,17 @@ const chartData = {
     datasets: [
         {
             label: 'Valore (€)',
-            data: props.history ? props.history.map(h => h.value) : [],
+            data: Array.from({ length: 38 }, (_, i) => {
+                const matchdayNumber = i + 1;
+                const record = props.history?.find(h => h.matchday === matchdayNumber);
+                return record ? record.value : null;
+            }),
             borderColor: '#6366f1',
             backgroundColor: 'rgba(99, 102, 241, 0.1)',
             borderWidth: 4,
             tension: 0.4,
             fill: true,
+            spanGaps: true,
             pointRadius: 4,
             pointBackgroundColor: '#fff',
             pointBorderColor: '#6366f1',
@@ -81,10 +90,22 @@ const chartOptions = {
             <div class="bg-indigo-950 p-10 rounded-[3.5rem] shadow-2xl relative border-b-8 border-indigo-800 text-center overflow-hidden">
                 <div class="absolute top-0 left-0 w-full h-full opacity-5 pointer-events-none italic font-black text-white text-9xl -rotate-12 translate-y-12 uppercase">Analysis</div>
                 <h4 class="relative z-10 text-[10px] font-black text-indigo-300 uppercase tracking-[0.4em] mb-4">Estimated Market Value</h4>
-                <p class="relative z-10 text-7xl md:text-8xl font-black text-white font-mono tracking-tighter">
-                    {{ formatEuro(stats?.valore_monetario) }}<span class="text-3xl text-indigo-400 ml-2">€</span>
-                </p>
-                <div class="relative z-10 mt-6 inline-flex gap-4">
+                
+                <div class="relative z-10 flex flex-col items-center justify-center">
+                    <div class="flex items-center gap-6">
+                        <p class="text-7xl md:text-8xl font-black text-white font-mono tracking-tighter">
+                            {{ formatEuro(stats?.valore_societario) }}<span class="text-3xl text-indigo-400 ml-2">€</span>
+                        </p>
+
+                        <div v-if="stats?.trend?.dir !== 'stable'" 
+                             :class="stats?.trend?.dir === 'up' ? 'text-green-400' : 'text-red-500'"
+                             class="flex flex-col items-center bg-white/5 p-4 rounded-3xl border border-white/10 backdrop-blur-sm">
+                            <span class="text-xl font-black font-mono">{{ stats?.trend?.perc }}%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="relative z-10 mt-8 inline-flex gap-4">
                     <div class="px-4 py-1.5 bg-green-500/20 border border-green-500/50 rounded-full">
                         <span class="text-green-400 text-[10px] font-black uppercase tracking-widest">Base: 130,00€</span>
                     </div>
@@ -99,10 +120,12 @@ const chartOptions = {
                 <div class="bg-white p-8 rounded-[2.5rem] shadow-xl border border-gray-100">
                     <div class="flex justify-between items-start mb-4">
                         <h4 class="text-[10px] font-black text-gray-400 uppercase tracking-widest italic">Asset Quality Index</h4>
-                        <span class="text-xs font-black text-gray-900">{{ stats?.asset_quality_perc }}%</span>
+                        <span class="text-xs font-black text-gray-900">{{ stats?.asset_quality_perc || 0 }}%</span>
                     </div>
                     <div class="w-full bg-gray-100 h-3 rounded-full overflow-hidden">
-                        <div class="bg-indigo-600 h-full transition-all duration-1000" :style="{ width: stats?.asset_quality_perc + '%' }"></div>
+                        <div class="bg-indigo-600 h-full transition-all duration-1000" 
+                             :style="{ width: (stats?.asset_quality_perc || 0) + '%' }">
+                        </div>
                     </div>
                     <p class="text-[9px] text-gray-400 mt-4 uppercase leading-tight font-bold">Potenza rosa rispetto ai migliori 25 del listone</p>
                 </div>
@@ -110,10 +133,12 @@ const chartOptions = {
                 <div class="bg-white p-8 rounded-[2.5rem] shadow-xl border border-gray-100">
                     <div class="flex justify-between items-start mb-4">
                         <h4 class="text-[10px] font-black text-blue-500 uppercase tracking-widest italic">Winning Efficiency</h4>
-                        <span class="text-xs font-black text-blue-600">{{ stats?.winning_efficiency_perc }}%</span>
+                        <span class="text-xs font-black text-blue-600">{{ stats?.winning_efficiency_perc || 0 }}%</span>
                     </div>
                     <div class="w-full bg-blue-50 h-3 rounded-full overflow-hidden">
-                        <div class="bg-blue-500 h-full transition-all duration-1000" :style="{ width: stats?.winning_efficiency_perc + '%' }"></div>
+                        <div class="bg-blue-500 h-full transition-all duration-1000" 
+                             :style="{ width: (stats?.winning_efficiency_perc || 0) + '%' }">
+                        </div>
                     </div>
                     <p class="text-[9px] text-gray-400 mt-4 uppercase leading-tight font-bold">Capacità realizzativa rispetto al leader della lega</p>
                 </div>
@@ -136,17 +161,30 @@ const chartOptions = {
                         <h3 class="text-white font-black uppercase italic text-xs tracking-widest">League Market Cap</h3>
                     </div>
                     <div class="overflow-y-auto flex-1 max-h-[320px]">
-                        <table class="w-full">
+                        <table class="w-full text-left">
                             <tbody class="divide-y divide-indigo-800/30">
                                 <tr v-for="(team, index) in allTeams" :key="index" 
                                     :class="{'bg-white/10': team.user_id === myData?.user_id}"
                                     class="hover:bg-white/5 transition">
                                     <td class="p-4 text-[10px] font-black text-indigo-400 italic">#{{ index + 1 }}</td>
                                     <td class="p-4">
-                                        <div class="text-white font-bold text-xs uppercase truncate max-w-[120px]">{{ team.team_name }}</div>
+                                        <div class="text-white font-bold text-xs uppercase truncate max-w-[120px]">
+                                            {{ team.team_name }}
+                                        </div>
                                     </td>
                                     <td class="p-4 text-right">
-                                        <div class="text-green-400 font-mono font-black text-xs">{{ formatEuro(team.valore) }}€</div>
+                                        <div class="flex items-center justify-end gap-2">
+                                            <div v-if="team.trend?.dir !== 'stable'" 
+                                                 :class="team.trend?.dir === 'up' ? 'text-green-400' : 'text-red-500'" 
+                                                 class="text-[10px] font-black flex items-center">
+                                                <span v-if="team.trend?.dir === 'up'">▲</span>
+                                                <span v-else>▼</span>
+                                                {{ team.trend?.perc }}%
+                                            </div>
+                                            <div class="text-white font-mono font-black text-xs">
+                                                {{ formatEuro(team.valore) }}€
+                                            </div>
+                                        </div>
                                     </td>
                                 </tr>
                             </tbody>
