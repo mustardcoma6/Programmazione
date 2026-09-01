@@ -7,5 +7,5 @@ class MarketValueHistory extends Model
 {
     protected $table = 'market_value_histories'; // Forza il plurale
 
-    protected $fillable = ['league_id', 'user_id', 'value', 'recorded_at'];
+    protected $fillable = ['league_id', 'user_id', 'matchday', 'value', 'recorded_at'];
 }

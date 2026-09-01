@@ -36,7 +36,7 @@ const chartData = {
             label: 'Valore (€)',
             data: Array.from({ length: 38 }, (_, i) => {
                 const matchdayNumber = i + 1;
-                const record = props.history?.find(h => h.matchday === matchdayNumber);
+                const record = props.history?.find(h => Number(h.matchday) == matchdayNumber);
                 return record ? record.value : null;
             }),
             borderColor: '#6366f1',
