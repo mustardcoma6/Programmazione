@@ -115,56 +115,66 @@ class LeagueController extends Controller
     }
 
     // --- AGGIORNAMENTO CAMPIONATO CON SALVATAGGIO STORICO ---
-    public function updateCampionato(Request $request) {
-        $investimentoBase = 130;
-        $plusvalorePotenziale = 440;
+    public function updateCampionato(Request $request) 
+{
+    $investimentoBase = 130;
+    $plusvalorePotenziale = 440;
 
-        $topP = RealPlayer::where('role', 'P')->orderBy('quotation', 'desc')->limit(3)->get()->sum('quotation');
-        $topD = RealPlayer::where('role', 'D')->orderBy('quotation', 'desc')->limit(8)->get()->sum('quotation');
-        $topC = RealPlayer::where('role', 'C')->orderBy('quotation', 'desc')->limit(8)->get()->sum('quotation');
-        $topA = RealPlayer::where('role', 'A')->orderBy('quotation', 'desc')->limit(6)->get()->sum('quotation');
-        $benchmarkVal = ($topP + $topD + $topC + $topA) ?: 1;
+    $topP = RealPlayer::where('role', 'P')->orderBy('quotation', 'desc')->limit(3)->get()->sum('quotation');
+    $topD = RealPlayer::where('role', 'D')->orderBy('quotation', 'desc')->limit(8)->get()->sum('quotation');
+    $topC = RealPlayer::where('role', 'C')->orderBy('quotation', 'desc')->limit(8)->get()->sum('quotation');
+    $topA = RealPlayer::where('role', 'A')->orderBy('quotation', 'desc')->limit(6)->get()->sum('quotation');
+    $benchmarkVal = ($topP + $topD + $topC + $topA) ?: 1;
 
-        $calcolaGol = function($p) {
-            if ($p < 66) return 0;
-            if ($p < 70) return 1;
-            return 2 + floor(($p - 70) / 5);
-        };
+    $calcolaGol = function($p) {
+        if ($p < 66) return 0;
+        if ($p < 70) return 1;
+        return 2 + floor(($p - 70) / 5);
+    };
 
-        // 1. Salva i nuovi dati inseriti
-        foreach ($request->classifica as $data) {
-            $lp = LeagueParticipant::find($data['id']);
-            if ($lp) {
-                $lp->update([
-                    'league_points' => $data['league_points'],
-                    'total_points' => $data['total_points'],
-                    'games_played' => $data['games_played'],
-                ]);
-            }
+    // 1. PRIMA AGGIORNIAMO TUTTI I PARTECIPANTI
+    foreach ($request->classifica as $data) {
+        $lp = LeagueParticipant::find($data['id']);
+        if ($lp) {
+            $lp->update([
+                'league_points' => $data['league_points'],
+                'total_points' => $data['total_points'],
+                'games_played' => $data['games_played'],
+            ]);
         }
+    }
 
-        // 2. Ricalcola i valori per la storia (tutta la lega)
-        $firstTeam = LeagueParticipant::find($request->classifica[0]['id']);
-        $tutti = LeagueParticipant::where('league_id', $firstTeam->league_id)->get();
-        $maxGolLega = $tutti->map(fn($s) => $calcolaGol($s->games_played > 0 ? ($s->total_points / $s->games_played) : 0))->max() ?: 1;
+    // 2. ORA RECUPERIAMO I DATI AGGIORNATI PER IL CALCOLO FINANZIARIO
+    $leagueId = LeagueParticipant::find($request->classifica[0]['id'])->league_id;
+    $tuttiAggiornati = LeagueParticipant::where('league_id', $leagueId)->get();
+    
+    // Troviamo il leader gol attuale
+    $maxGolLega = $tuttiAggiornati->map(fn($s) => $calcolaGol($s->games_played > 0 ? ($s->total_points / $s->games_played) : 0))->max() ?: 1;
 
-        foreach ($tutti as $s) {
-            $rSum = Roster::where('user_id', $s->user_id)->where('league_id', $s->league_id)->with('player')->get()->sum(fn($r) => $r->player->quotation ?? 0);
-            $aQ = $rSum / $benchmarkVal;
-            $mP = $s->games_played > 0 ? ($s->total_points / $s->games_played) : 0;
-            $wE = $calcolaGol($mP) / $maxGolLega;
-            $valoreAttuale = round($investimentoBase + ($plusvalorePotenziale * $aQ * $wE), 2);
+    // 3. SALVIAMO LA STORIA PER OGNI SQUADRA
+    foreach ($tuttiAggiornati as $s) {
+        $rosterSum = Roster::where('user_id', $s->user_id)->where('league_id', $s->league_id)->with('player')->get()->sum(fn($r) => $r->player->quotation ?? 0);
+        $assetQual = $rosterSum / $benchmarkVal;
+        $mediaP = $s->games_played > 0 ? ($s->total_points / $s->games_played) : 0;
+        $winEff = $calcolaGol($mediaP) / $maxGolLega;
+        $valoreAttuale = round($investimentoBase + ($plusvalorePotenziale * $assetQual * $winEff), 2);
 
-            if ($s->games_played > 0) {
-                MarketValueHistory::updateOrCreate(
-                    ['user_id' => $s->user_id, 'league_id' => $s->league_id, 'matchday' => $s->games_played],
-                    ['value' => $valoreAttuale, 'recorded_at' => now()]
-                );
-                // Pulizia dati futuri se si torna indietro
-                MarketValueHistory::where('user_id', $s->user_id)->where('league_id', $s->league_id)->where('matchday', '>', $s->games_played)->delete();
-            }
+        if ($s->games_played > 0) {
+            // Crea il punto per la giornata indicata (G1, G2, G3...)
+            MarketValueHistory::updateOrCreate(
+                ['user_id' => $s->user_id, 'league_id' => $s->league_id, 'matchday' => $s->games_played],
+                ['value' => $valoreAttuale, 'recorded_at' => now()]
+            );
+
+            // Elimina eventuali giornate future se l'admin è tornato indietro
+            MarketValueHistory::where('user_id', $s->user_id)
+                ->where('league_id', $s->league_id)
+                ->where('matchday', '>', $s->games_played)
+                ->delete();
         }
-        return redirect()->back()->with('message', 'Dati e Grafici aggiornati!');
+    }
+
+    return redirect()->back()->with('message', 'Dati e Grafici aggiornati correttamente!');
     }
 
     // --- ALTRI METODI GESTIONE (Invariati) ---
