@@ -19,14 +19,16 @@ const props = defineProps({
     message: String
 });
 
+// Funzione per formattare i numeri in Euro
 const formatEuro = (value) => {
-    if (!value) return '0,00';
+    if (value === undefined || value === null || value === 0) return '0,00';
     return Number(value).toLocaleString('it-IT', { 
         minimumFractionDigits: 2, 
         maximumFractionDigits: 2 
     });
 };
 
+// Configurazione dei dati del grafico (Mapping corretto delle giornate)
 const chartData = {
     labels: Array.from({ length: 38 }, (_, i) => `G${i + 1}`),
     datasets: [
@@ -58,7 +60,7 @@ const chartOptions = {
             min: 0,
             max: 570,
             ticks: { color: '#94a3b8', callback: (v) => v + ' €' },
-            grid: { color: 'rgba(241, 245, 249, 0.1)' }
+            grid: { color: 'rgba(241, 245, 249, 0.05)' }
         },
         x: {
             ticks: { color: '#94a3b8', maxRotation: 0, autoSkip: true, maxTicksLimit: 12 },
@@ -86,32 +88,31 @@ const chartOptions = {
         </template>
 
         <div class="py-12 px-4 max-w-6xl mx-auto space-y-6">
-            <!-- 1. MARKET CAP -->
+            <!-- 1. MARKET CAP (SISTEMATO VALORE_MONETARIO) -->
             <div class="bg-indigo-950 p-10 rounded-[3.5rem] shadow-2xl relative border-b-8 border-indigo-800 text-center overflow-hidden">
-                <div class="absolute top-0 left-0 w-full h-full opacity-5 pointer-events-none italic font-black text-white text-9xl -rotate-12 translate-y-12 uppercase">Analysis</div>
+                <div class="absolute top-0 left-0 w-full h-full opacity-5 pointer-events-none italic font-black text-white text-9xl -rotate-12 translate-y-12 uppercase text-center">Analysis</div>
                 <h4 class="relative z-10 text-[10px] font-black text-indigo-300 uppercase tracking-[0.4em] mb-4">Estimated Market Value</h4>
                 
                 <div class="relative z-10 flex flex-col items-center justify-center">
                     <div class="flex items-center gap-6">
+                        <!-- Qui abbiamo cambiato valore_societario in valore_monetario -->
                         <p class="text-7xl md:text-8xl font-black text-white font-mono tracking-tighter">
-                            {{ formatEuro(stats?.valore_societario) }}<span class="text-3xl text-indigo-400 ml-2">€</span>
+                            {{ formatEuro(stats?.valore_monetario) }}<span class="text-3xl text-indigo-400 ml-2">€</span>
                         </p>
 
+                        <!-- Trend Icon -->
                         <div v-if="stats?.trend?.dir !== 'stable'" 
                              :class="stats?.trend?.dir === 'up' ? 'text-green-400' : 'text-red-500'"
-                             class="flex flex-col items-center bg-white/5 p-4 rounded-3xl border border-white/10 backdrop-blur-sm">
+                             class="flex flex-col items-center bg-white/5 p-4 rounded-3xl border border-white/10 backdrop-blur-sm min-w-[80px]">
+                            <span class="text-xs mb-1">{{ stats?.trend?.dir === 'up' ? '▲' : '▼' }}</span>
                             <span class="text-xl font-black font-mono">{{ stats?.trend?.perc }}%</span>
                         </div>
                     </div>
                 </div>
 
-                <div class="relative z-10 mt-8 inline-flex gap-4">
-                    <div class="px-4 py-1.5 bg-green-500/20 border border-green-500/50 rounded-full">
-                        <span class="text-green-400 text-[10px] font-black uppercase tracking-widest">Base: 130,00€</span>
-                    </div>
-                    <div class="px-4 py-1.5 bg-blue-500/20 border border-blue-500/50 rounded-full text-blue-400 text-[10px] font-black uppercase tracking-widest">
-                        Target: 570,00€
-                    </div>
+                <div class="relative z-10 mt-8 flex justify-center gap-4">
+                    <span class="px-4 py-1.5 bg-green-500/20 border border-green-500/50 rounded-full text-green-400 text-[10px] font-black uppercase tracking-widest">Base: 130,00€</span>
+                    <span class="px-4 py-1.5 bg-blue-500/20 border border-blue-500/50 rounded-full text-blue-400 text-[10px] font-black uppercase tracking-widest">Target: 570,00€</span>
                 </div>
             </div>
 
@@ -127,7 +128,7 @@ const chartOptions = {
                              :style="{ width: (stats?.asset_quality_perc || 0) + '%' }">
                         </div>
                     </div>
-                    <p class="text-[9px] text-gray-400 mt-4 uppercase leading-tight font-bold">Potenza rosa rispetto ai migliori 25 del listone</p>
+                    <p class="text-[9px] text-gray-400 mt-4 uppercase font-bold">Potenza rosa rispetto ai migliori 25 del listone</p>
                 </div>
 
                 <div class="bg-white p-8 rounded-[2.5rem] shadow-xl border border-gray-100">
@@ -140,7 +141,7 @@ const chartOptions = {
                              :style="{ width: (stats?.winning_efficiency_perc || 0) + '%' }">
                         </div>
                     </div>
-                    <p class="text-[9px] text-gray-400 mt-4 uppercase leading-tight font-bold">Capacità realizzativa rispetto al leader della lega</p>
+                    <p class="text-[9px] text-gray-400 mt-4 uppercase font-bold">Capacità realizzativa rispetto al leader della lega</p>
                 </div>
             </div>
 
@@ -174,11 +175,11 @@ const chartOptions = {
                                     </td>
                                     <td class="p-4 text-right">
                                         <div class="flex items-center justify-end gap-2">
+                                            <!-- Trend Team Classifica -->
                                             <div v-if="team.trend?.dir !== 'stable'" 
                                                  :class="team.trend?.dir === 'up' ? 'text-green-400' : 'text-red-500'" 
                                                  class="text-[10px] font-black flex items-center">
-                                                <span v-if="team.trend?.dir === 'up'">▲</span>
-                                                <span v-else>▼</span>
+                                                <span>{{ team.trend?.dir === 'up' ? '▲' : '▼' }}</span>
                                                 {{ team.trend?.perc }}%
                                             </div>
                                             <div class="text-white font-mono font-black text-xs">
@@ -194,6 +195,11 @@ const chartOptions = {
                         Global Valuation Ranking
                     </div>
                 </div>
+            </div>
+            
+            <!-- AVVISO -->
+            <div v-if="message" class="text-center p-4 bg-gray-50 rounded-2xl">
+                <p class="text-[10px] font-black text-blue-500 uppercase tracking-widest">{{ message }}</p>
             </div>
         </div>
     </AuthenticatedLayout>
