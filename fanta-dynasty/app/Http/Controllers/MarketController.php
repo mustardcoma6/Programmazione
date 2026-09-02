@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\DB;
 
 class MarketController extends Controller
 {
+
     // MOSTRA IL CALENDARIO SESSIONI
     public function sessions() 
     {
@@ -80,10 +81,40 @@ class MarketController extends Controller
     // --- ALTRE FUNZIONI (Rosa, Aste) ---
     public function myRosterPage() { $u = auth()->user(); $p = LeagueParticipant::where('user_id', $u->id)->first(); if (!$p) return redirect()->route('dashboard'); $pros = Roster::where('league_id', $p->league_id)->where('user_id', $u->id)->with('player')->get()->map(function($i){$i->is_primavera=false; return $i;}); $juniors = PrimaveraRoster::where('league_id', $p->league_id)->where('user_id', $u->id)->with('player')->get()->map(function($i){$i->is_primavera=true; return $i;}); $merged = $pros->concat($juniors)->sortBy([function($a,$b){$o=['P'=>1,'D'=>2,'C'=>3,'A'=>4]; return $o[$a->player->role]<=>$o[$b->player->role];},['player.name','asc']])->values()->all(); $val = $pros->sum('purchase_price') + $juniors->sum('purchase_price'); return Inertia::render('Roster/Index', ['myData' => $p, 'myPlayers' => $merged, 'rosterValue' => (int)$val]); }
     
-    public function auctions() { $u = auth()->user(); $p = LeagueParticipant::where('user_id', $u->id)->first(); if (!$p) return redirect()->route('dashboard'); $l = League::find($p->league_id); $this->processExpiredAuctions($l->id); $now = now(); $curr = MarketSession::where('league_id', $l->id)->where('start_at', '<=', $now)->where('end_at', '>=', $now)->first(); return Inertia::render('Market/Auctions', ['league' => $l, 'isMarketOpen' => (bool)$curr, 'currentSession' => $curr, 'myData' => $p, 'frozenCredits' => (int)(Auction::where('league_id', $l->id)->where('user_id', $u->id)->where('is_finished', false)->sum('current_bid') ?? 0), 'myRoster' => Roster::where('league_id', $l->id)->where('user_id', $u->id)->with('player')->get(), 'availablePlayers' => RealPlayer::whereNotIn('id', array_merge(Roster::where('league_id', $l->id)->pluck('real_player_id')->toArray(), PrimaveraRoster::where('league_id', $l->id)->pluck('real_player_id')->toArray()))->orderBy('role', 'desc')->get(), 'activeAuctions' => Auction::where('league_id', $l->id)->where('is_finished', false)->with(['player', 'user'])->get()]); }
+    public function auctions() 
+    {
+        $u = auth()->user();
+        $p = LeagueParticipant::where('user_id', $u->id)->first();
+        if (!$p) return redirect()->route('dashboard');
+        
+        $l = League::find($p->league_id);
+        
+        // Sincronizziamo anche qui
+        $now = Carbon::now('Europe/Rome');
+        
+        $curr = MarketSession::where('league_id', $l->id)
+            ->where('start_at', '<=', $now)
+            ->where('end_at', '>=', $now)
+            ->first();
+            
+            return Inertia::render('Market/Auctions', ['league' => $l, 'isMarketOpen' => (bool)$curr, 'currentSession' => $curr, 'myData' => $p, 'frozenCredits' => (int)(Auction::where('league_id', $l->id)->where('user_id', $u->id)->where('is_finished', false)->sum('current_bid') ?? 0), 'myRoster' => Roster::where('league_id', $l->id)->where('user_id', $u->id)->with('player')->get(), 'availablePlayers' => RealPlayer::whereNotIn('id', array_merge(Roster::where('league_id', $l->id)->pluck('real_player_id')->toArray(), PrimaveraRoster::where('league_id', $l->id)->pluck('real_player_id')->toArray()))->orderBy('role', 'desc')->get(), 'activeAuctions' => Auction::where('league_id', $l->id)->where('is_finished', false)->with(['player', 'user'])->get()]); }
     
-    public function buy(Request $request) { $l = League::findOrFail($request->league_id); $now = Carbon::now('Europe/Rome'); $s = MarketSession::where('league_id', $l->id)->where('start_at', '<=', $now)->where('end_at', '>=', $now)->first(); if (!$s) return back(); $a = Auction::where('league_id', $l->id)->where('real_player_id', $request->player_id)->where('is_finished', false)->first(); if (!$a) { $a = Auction::create(['league_id' => $l->id, 'real_player_id' => $request->player_id, 'user_id' => auth()->id(), 'current_bid' => 0, 'expires_at' => $now->copy()->addMinutes($s->auction_duration), 'is_finished' => false]); } $nb = $request->price ?? ($a->current_bid + 1); $this->executeBiddingWar($a, auth()->id(), $nb); if ($now->diffInSeconds($a->expires_at, false) <= 30) $a->update(['expires_at' => $now->copy()->addMinute()]); return back(); }
-    
+    public function buy(Request $request) 
+    {
+        $l = League::findOrFail($request->league_id);
+        // USIAMO SEMPRE QUESTO FORMATO
+        $now = Carbon::now('Europe/Rome'); 
+        
+        $s = MarketSession::where('league_id', $l->id)
+            ->where('start_at', '<=', $now)
+            ->where('end_at', '>=', $now)
+            ->first();
+            
+        if (!$s) {
+            // Se entri qui, significa che per il server il mercato è chiuso
+            return back()->withErrors(['error' => 'Il mercato è chiuso. Orario server: ' . $now->format('H:i')]);
+        }
+
     private function executeBiddingWar($a, $lId, $lA) { $bo = Autobid::where('auction_id', $a->id)->where('user_id', '!=', $lId)->orderBy('max_bid', 'desc')->orderBy('created_at', 'asc')->first(); if ($bo) { if ($bo->max_bid > $lA) $a->update(['user_id' => $bo->user_id, 'current_bid' => $lA + 1]); elseif ($bo && $bo->max_bid == $lA) $a->update(['user_id' => $bo->user_id, 'current_bid' => $lA]); else $a->update(['user_id' => $lId, 'current_bid' => $lA]); } else { if ($lA > $a->current_bid) $a->update(['user_id' => $lId, 'current_bid' => $lA]); } }
     
     public function release(Request $request) { $r = Roster::with('player')->findOrFail($request->roster_id); $p = LeagueParticipant::where('user_id', $r->user_id)->first(); if ($p) { $p->increment('remaining_budget', ceil(($r->release_clause ?: $r->purchase_price) / 2)); $p->decrement('years_budget', ($r->contract_years - floor($r->contract_years / 2))); } $r->delete(); return back(); }
