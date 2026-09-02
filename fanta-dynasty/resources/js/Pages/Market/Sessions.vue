@@ -7,7 +7,7 @@ const props = defineProps({ league: Object, sessions: Array });
 const form = useForm({ 
     start_at: '', 
     end_at: '',
-    auction_time: '01:30',
+    auction_time: '00:01',
     roles: ['P', 'D', 'C', 'A']
 });
 
