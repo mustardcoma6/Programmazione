@@ -14,11 +14,10 @@ class MarketController extends Controller
     public function sessions() 
     {
         $user = auth()->user();
-        $participant = LeagueParticipant::where('user_id', $user->id)->first();
-        
-        if (!$participant) return redirect()->route('dashboard');
+        $p = LeagueParticipant::where('user_id', $user->id)->first();
+        if (!$p) return redirect()->route('dashboard');
 
-        $league = League::find($participant->league_id);
+        $league = League::find($p->league_id);
         $sessions = MarketSession::where('league_id', $league->id)->orderBy('start_at', 'desc')->get();
 
         return Inertia::render('Market/Sessions', [
@@ -73,22 +72,7 @@ class MarketController extends Controller
         return back()->with('message', 'Aste annullate.');
     }
 
-    // VISUALIZZAZIONE ROSA
-    public function myRosterPage() 
-    { 
-        $u = auth()->user(); 
-        $p = LeagueParticipant::where('user_id', $u->id)->first(); 
-        if (!$p) return redirect()->route('dashboard'); 
-        
-        $pros = Roster::where('league_id', $p->league_id)->where('user_id', $u->id)->with('player')->get()->map(function($i){$i->is_primavera=false; return $i;}); 
-        $juniors = PrimaveraRoster::where('league_id', $p->league_id)->where('user_id', $u->id)->with('player')->get()->map(function($i){$i->is_primavera=true; return $i;}); 
-        $merged = $pros->concat($juniors)->sortBy([function($a,$b){$o=['P'=>1,'D'=>2,'C'=>3,'A'=>4]; return $o[$a->player->role]<=>$o[$b->player->role];},['player.name','asc']])->values()->all(); 
-        $val = $pros->sum('purchase_price') + $juniors->sum('purchase_price'); 
-        
-        return Inertia::render('Roster/Index', ['myData' => $p, 'myPlayers' => $merged, 'rosterValue' => (int)$val]); 
-    }
-    
-    // VISUALIZZAZIONE ASTE (Fuso Orario Roma)
+    // VISUALIZZAZIONE ASTE (Tutti i dati ripristinati)
     public function auctions() 
     {
         $u = auth()->user();
@@ -98,24 +82,31 @@ class MarketController extends Controller
         $l = League::find($p->league_id);
         $this->processExpiredAuctions($l->id);
         
-        // Sincronizziamo l'ora esatta di Roma
-        $now = Carbon::now('Europe/Rome')->toDateTimeString();
-        
+        $now = Carbon::now('Europe/Rome');
         $curr = MarketSession::where('league_id', $l->id)
             ->where('start_at', '<=', $now)
             ->where('end_at', '>=', $now)
             ->first();
 
-        // Passiamo i dati alla pagina
+        // Recuperiamo i giocatori già occupati
+        $takenPlayers = array_merge(
+            Roster::where('league_id', $l->id)->pluck('real_player_id')->toArray(),
+            PrimaveraRoster::where('league_id', $l->id)->pluck('real_player_id')->toArray()
+        );
+
         return Inertia::render('Market/Auctions', [
             'league' => $l, 
             'isMarketOpen' => (bool)$curr, 
             'currentSession' => $curr, 
-            // ... (restanti props)
+            'myData' => $p, 
+            'frozenCredits' => (int)(Auction::where('league_id', $l->id)->where('user_id', $u->id)->where('is_finished', false)->sum('current_bid') ?? 0), 
+            'myRoster' => Roster::where('league_id', $l->id)->where('user_id', $u->id)->with('player')->get(), 
+            'availablePlayers' => RealPlayer::whereNotIn('id', $takenPlayers)->orderBy('role', 'desc')->get(), 
+            'activeAuctions' => Auction::where('league_id', $l->id)->where('is_finished', false)->with(['player', 'user'])->get()
         ]);
     }
     
-    // AZIONE DI ACQUISTO (Fuso Orario Roma)
+    // AZIONE DI ACQUISTO (Rilancio a sbalzo intelligente)
     public function buy(Request $request) 
     {
         $l = League::findOrFail($request->league_id);
@@ -126,16 +117,13 @@ class MarketController extends Controller
             ->where('end_at', '>=', $now)
             ->first();
             
-        if (!$s) {
-            return back()->withErrors(['error' => 'Il mercato è chiuso.']);
-        }
+        if (!$s) return back()->withErrors(['error' => 'Il mercato è chiuso.']);
 
         $a = Auction::where('league_id', $l->id)
             ->where('real_player_id', $request->player_id)
             ->where('is_finished', false)
             ->first();
 
-        // Se l'asta non esiste, la creiamo
         if (!$a) {
             $a = Auction::create([
                 'league_id' => $l->id,
@@ -147,19 +135,16 @@ class MarketController extends Controller
             ]);
         }
 
-        // Il "prezzo" che invii ora è il tuo MASSIMO (es. 10)
-        $maxBidUtente = (int)$request->price;
-
-        // 1. Salviamo/Aggiorniamo il tuo rilancio automatico
+        // Registriamo il limite massimo dell'utente
         Autobid::updateOrCreate(
             ['auction_id' => $a->id, 'user_id' => auth()->id()],
-            ['max_bid' => $maxBidUtente]
+            ['max_bid' => (int)$request->price]
         );
 
-        // 2. Facciamo partire la guerra di rilanci
+        // Calcoliamo chi vince tra i tetti massimi
         $this->executeBiddingWar($a);
 
-        // 3. Bonus tempo se mancano meno di 30 secondi
+        // Estensione tempo (Anticipo chiusura)
         if ($now->diffInSeconds($a->expires_at, false) <= 30) {
             $a->update(['expires_at' => $now->copy()->addMinute()]);
         }
@@ -167,41 +152,20 @@ class MarketController extends Controller
         return back();
     }
 
-
     private function executeBiddingWar($a) 
-    {
-        // Prendiamo i due Autobid più alti per questa asta
-        $topBids = Autobid::where('auction_id', $a->id)
-            ->orderBy('max_bid', 'desc')
-            ->orderBy('created_at', 'asc')
-            ->limit(2)
-            ->get();
-
-        $vincitore = $topBids[0]; // Quello con il max_bid più alto
-        $secondo = $topBids[1] ?? null; // Il rivale più vicino
+    { 
+        $topBids = Autobid::where('auction_id', $a->id)->orderBy('max_bid', 'desc')->orderBy('created_at', 'asc')->limit(2)->get();
+        $vincitore = $topBids[0]; 
+        $secondo = $topBids[1] ?? null;
 
         if (!$secondo) {
-            // Se c'è solo un offerente, l'asta parte da 1 (o dal prezzo base)
-            $nuovoPrezzo = ($a->current_bid == 0) ? 1 : $a->current_bid;
-            $a->update([
-                'user_id' => $vincitore->user_id,
-                'current_bid' => $nuovoPrezzo
-            ]);
+            $a->update(['user_id' => $vincitore->user_id, 'current_bid' => max(1, $a->current_bid)]);
         } else {
-            // Se ci sono due o più offerenti:
             if ($vincitore->max_bid > $secondo->max_bid) {
-                // Il vincitore supera il secondo di 1 credito
-                $a->update([
-                    'user_id' => $vincitore->user_id,
-                    'current_bid' => $secondo->max_bid + 1
-                ]);
+                $a->update(['user_id' => $vincitore->user_id, 'current_bid' => $secondo->max_bid + 1]);
             } else {
-                // In caso di parità perfetta, vince chi ha impostato l'autobid per primo
-                // Il prezzo diventa esattamente il loro massimo
-                $a->update([
-                    'user_id' => $vincitore->user_id,
-                    'current_bid' => $vincitore->max_bid
-                ]);
+                // Parità: vince il primo che ha puntato quella cifra
+                $a->update(['user_id' => $vincitore->user_id, 'current_bid' => $vincitore->max_bid]);
             }
         }
     }
@@ -262,10 +226,7 @@ class MarketController extends Controller
         $allTeamsValues = [];
         foreach ($tutti as $s) {
             $rSum = Roster::where('user_id', $s->user_id)->where('league_id', $s->league_id)->with('player')->get()->sum(fn($r) => $r->player->quotation ?? 0);
-            $aQ = $rSum / $benchmarkVal;
-            $mP = $s->games_played > 0 ? ($s->total_points / $s->games_played) : 0;
-            $wE = $calcolaGol($mP) / $maxGolLega;
-            $val = $inv + ($plus * $aQ * $wE);
+            $val = $inv + ($plus * ($rSum / $benchmarkVal) * ($calcolaGol($s->games_played > 0 ? ($s->total_points / $s->games_played) : 0) / $maxGolLega));
 
             $prev = MarketValueHistory::where('user_id', $s->user_id)->where('matchday', '<', $s->games_played)->orderBy('matchday', 'desc')->first();
             $trend = ['dir' => 'stable', 'perc' => 0];
@@ -279,6 +240,7 @@ class MarketController extends Controller
 
         $myFin = collect($allTeamsValues)->firstWhere('user_id', $user->id);
         $tuaMedia = $lp->total_points / $lp->games_played;
+        $myRosterSum = Roster::where('user_id', $user->id)->where('league_id', $firstLeague->id)->with('player')->get()->sum(fn($r) => $r->player->quotation ?? 0);
 
         return Inertia::render('Societa/Finanze', [
             'leagues' => $leagues,
@@ -286,7 +248,7 @@ class MarketController extends Controller
             'stats' => [
                 'valore_monetario' => $myFin['valore'],
                 'trend' => $myFin['trend'],
-                'asset_quality_perc' => round((Roster::where('user_id', $user->id)->where('league_id', $firstLeague->id)->with('player')->get()->sum(fn($r)=>$r->player->quotation??0) / $benchmarkVal)*100, 1),
+                'asset_quality_perc' => round(($myRosterSum / $benchmarkVal) * 100, 1),
                 'winning_efficiency_perc' => round(($calcolaGol($tuaMedia) / $maxGolLega) * 100, 1),
                 'tuoi_gol' => $calcolaGol($tuaMedia),
                 'leader_gol' => $maxGolLega,
@@ -297,6 +259,7 @@ class MarketController extends Controller
         ]);
     }
 
+    public function myRosterPage() { $u = auth()->user(); $p = LeagueParticipant::where('user_id', $u->id)->first(); $pros = Roster::where('league_id', $p->league_id)->where('user_id', $u->id)->with('player')->get(); return Inertia::render('Roster/Index', ['myData' => $p, 'myPlayers' => $pros]); }
     public function primaveraPage() { $u = auth()->user(); $p = LeagueParticipant::where('user_id', $u->id)->first(); $players = PrimaveraRoster::where('league_id', $p->league_id)->where('user_id', $u->id)->with('player')->get(); return Inertia::render('Societa/Primavera', ['myData' => $p, 'primaveraPlayers' => $players]); }
 
     private function processExpiredAuctions($leagueId) {
