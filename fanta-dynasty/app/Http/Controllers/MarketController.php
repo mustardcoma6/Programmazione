@@ -10,7 +10,6 @@ use Illuminate\Support\Facades\DB;
 
 class MarketController extends Controller
 {
-
     // MOSTRA IL CALENDARIO SESSIONI
     public function sessions() 
     {
@@ -28,8 +27,7 @@ class MarketController extends Controller
         ]);
     }
 
-    // SALVA NUOVA SESSIONE
-    // SALVA NUOVA SESSIONE (Versione corretta per il timer)
+    // SALVA NUOVA SESSIONE (Timer flessibile)
     public function storeSession(Request $request) 
     {
         $p = LeagueParticipant::where('user_id', auth()->id())->first();
@@ -37,34 +35,31 @@ class MarketController extends Controller
         $request->validate([
             'start_at' => 'required|date',
             'end_at' => 'required|date|after:start_at',
-            'auction_time' => 'required', // Può essere "10" o "00:10" o "1:30"
+            'auction_time' => 'required',
             'roles' => 'required|array'
         ]);
 
         $inputTime = $request->auction_time;
         $minutes = 0;
 
-        // Se l'utente usa il formato HH:MM (es. 01:30 o 00:10)
         if (str_contains($inputTime, ':')) {
             $parts = explode(':', $inputTime);
             $minutes = ((int)$parts[0] * 60) + (int)$parts[1];
         } else {
-            // Se l'utente scrive solo un numero (es. 10)
             $minutes = (int)$inputTime;
         }
 
-        // Protezione: se il calcolo fallisce o mettono 0, mettiamo 5 minuti di default
         if ($minutes <= 0) $minutes = 5;
 
         MarketSession::create([
             'league_id' => $p->league_id,
             'start_at' => $request->start_at,
             'end_at' => $request->end_at,
-            'auction_duration' => $minutes, // Salviamo i minuti reali scelti
+            'auction_duration' => $minutes,
             'allowed_roles' => implode(',', $request->roles)
         ]);
 
-        return back()->with('message', 'Sessione salvata! Durata aste: ' . $minutes . ' minuti.');
+        return back()->with('message', 'Sessione salvata!');
     }
 
     // CHIUSURA EMERGENZA
@@ -78,9 +73,22 @@ class MarketController extends Controller
         return back()->with('message', 'Aste annullate.');
     }
 
-    // --- ALTRE FUNZIONI (Rosa, Aste) ---
-    public function myRosterPage() { $u = auth()->user(); $p = LeagueParticipant::where('user_id', $u->id)->first(); if (!$p) return redirect()->route('dashboard'); $pros = Roster::where('league_id', $p->league_id)->where('user_id', $u->id)->with('player')->get()->map(function($i){$i->is_primavera=false; return $i;}); $juniors = PrimaveraRoster::where('league_id', $p->league_id)->where('user_id', $u->id)->with('player')->get()->map(function($i){$i->is_primavera=true; return $i;}); $merged = $pros->concat($juniors)->sortBy([function($a,$b){$o=['P'=>1,'D'=>2,'C'=>3,'A'=>4]; return $o[$a->player->role]<=>$o[$b->player->role];},['player.name','asc']])->values()->all(); $val = $pros->sum('purchase_price') + $juniors->sum('purchase_price'); return Inertia::render('Roster/Index', ['myData' => $p, 'myPlayers' => $merged, 'rosterValue' => (int)$val]); }
+    // VISUALIZZAZIONE ROSA
+    public function myRosterPage() 
+    { 
+        $u = auth()->user(); 
+        $p = LeagueParticipant::where('user_id', $u->id)->first(); 
+        if (!$p) return redirect()->route('dashboard'); 
+        
+        $pros = Roster::where('league_id', $p->league_id)->where('user_id', $u->id)->with('player')->get()->map(function($i){$i->is_primavera=false; return $i;}); 
+        $juniors = PrimaveraRoster::where('league_id', $p->league_id)->where('user_id', $u->id)->with('player')->get()->map(function($i){$i->is_primavera=true; return $i;}); 
+        $merged = $pros->concat($juniors)->sortBy([function($a,$b){$o=['P'=>1,'D'=>2,'C'=>3,'A'=>4]; return $o[$a->player->role]<=>$o[$b->player->role];},['player.name','asc']])->values()->all(); 
+        $val = $pros->sum('purchase_price') + $juniors->sum('purchase_price'); 
+        
+        return Inertia::render('Roster/Index', ['myData' => $p, 'myPlayers' => $merged, 'rosterValue' => (int)$val]); 
+    }
     
+    // VISUALIZZAZIONE ASTE (Fuso Orario Roma)
     public function auctions() 
     {
         $u = auth()->user();
@@ -88,21 +96,30 @@ class MarketController extends Controller
         if (!$p) return redirect()->route('dashboard');
         
         $l = League::find($p->league_id);
+        $this->processExpiredAuctions($l->id);
         
-        // Sincronizziamo anche qui
         $now = Carbon::now('Europe/Rome');
-        
         $curr = MarketSession::where('league_id', $l->id)
             ->where('start_at', '<=', $now)
             ->where('end_at', '>=', $now)
             ->first();
-            
-            return Inertia::render('Market/Auctions', ['league' => $l, 'isMarketOpen' => (bool)$curr, 'currentSession' => $curr, 'myData' => $p, 'frozenCredits' => (int)(Auction::where('league_id', $l->id)->where('user_id', $u->id)->where('is_finished', false)->sum('current_bid') ?? 0), 'myRoster' => Roster::where('league_id', $l->id)->where('user_id', $u->id)->with('player')->get(), 'availablePlayers' => RealPlayer::whereNotIn('id', array_merge(Roster::where('league_id', $l->id)->pluck('real_player_id')->toArray(), PrimaveraRoster::where('league_id', $l->id)->pluck('real_player_id')->toArray()))->orderBy('role', 'desc')->get(), 'activeAuctions' => Auction::where('league_id', $l->id)->where('is_finished', false)->with(['player', 'user'])->get()]); }
+
+        return Inertia::render('Market/Auctions', [
+            'league' => $l, 
+            'isMarketOpen' => (bool)$curr, 
+            'currentSession' => $curr, 
+            'myData' => $p, 
+            'frozenCredits' => (int)(Auction::where('league_id', $l->id)->where('user_id', $u->id)->where('is_finished', false)->sum('current_bid') ?? 0), 
+            'myRoster' => Roster::where('league_id', $l->id)->where('user_id', $u->id)->with('player')->get(), 
+            'availablePlayers' => RealPlayer::whereNotIn('id', array_merge(Roster::where('league_id', $l->id)->pluck('real_player_id')->toArray(), PrimaveraRoster::where('league_id', $l->id)->pluck('real_player_id')->toArray()))->orderBy('role', 'desc')->get(), 
+            'activeAuctions' => Auction::where('league_id', $l->id)->where('is_finished', false)->with(['player', 'user'])->get()
+        ]); 
+    }
     
+    // AZIONE DI ACQUISTO (Fuso Orario Roma)
     public function buy(Request $request) 
     {
         $l = League::findOrFail($request->league_id);
-        // USIAMO SEMPRE QUESTO FORMATO
         $now = Carbon::now('Europe/Rome'); 
         
         $s = MarketSession::where('league_id', $l->id)
@@ -111,19 +128,73 @@ class MarketController extends Controller
             ->first();
             
         if (!$s) {
-            // Se entri qui, significa che per il server il mercato è chiuso
-            return back()->withErrors(['error' => 'Il mercato è chiuso. Orario server: ' . $now->format('H:i')]);
+            return back()->withErrors(['error' => 'Il mercato è chiuso.']);
         }
 
-    private function executeBiddingWar($a, $lId, $lA) { $bo = Autobid::where('auction_id', $a->id)->where('user_id', '!=', $lId)->orderBy('max_bid', 'desc')->orderBy('created_at', 'asc')->first(); if ($bo) { if ($bo->max_bid > $lA) $a->update(['user_id' => $bo->user_id, 'current_bid' => $lA + 1]); elseif ($bo && $bo->max_bid == $lA) $a->update(['user_id' => $bo->user_id, 'current_bid' => $lA]); else $a->update(['user_id' => $lId, 'current_bid' => $lA]); } else { if ($lA > $a->current_bid) $a->update(['user_id' => $lId, 'current_bid' => $lA]); } }
-    
-    public function release(Request $request) { $r = Roster::with('player')->findOrFail($request->roster_id); $p = LeagueParticipant::where('user_id', $r->user_id)->first(); if ($p) { $p->increment('remaining_budget', ceil(($r->release_clause ?: $r->purchase_price) / 2)); $p->decrement('years_budget', ($r->contract_years - floor($r->contract_years / 2))); } $r->delete(); return back(); }
-    
-    public function updateContract(Request $request) { $r = Roster::findOrFail($request->roster_id); $r->update(['contract_years' => $request->new_years, 'release_clause' => ($r->release_clause ?: $r->purchase_price) + $request->clausola_investment]); return back(); }
-    
-    public function history() { $p = LeagueParticipant::where('user_id', auth()->id())->first(); return Inertia::render('Market/History', ['league' => League::find($p->league_id), 'movements' => Roster::where('league_id', $p->league_id)->with(['player', 'user'])->orderBy('created_at', 'desc')->get()]); }
+        $a = Auction::where('league_id', $l->id)
+            ->where('real_player_id', $request->player_id)
+            ->where('is_finished', false)
+            ->first();
 
-    // --- FINANZE AGGIORNATE ---
+        if (!$a) {
+            $a = Auction::create([
+                'league_id' => $l->id,
+                'real_player_id' => $request->player_id,
+                'user_id' => auth()->id(),
+                'current_bid' => 0,
+                'expires_at' => $now->copy()->addMinutes($s->auction_duration),
+                'is_finished' => false
+            ]);
+        }
+
+        $nb = $request->price ?? ($a->current_bid + 1);
+        $this->executeBiddingWar($a, auth()->id(), $nb);
+
+        if ($now->diffInSeconds($a->expires_at, false) <= 30) {
+            $a->update(['expires_at' => $now->copy()->addMinute()]);
+        }
+
+        return back();
+    } // <-- Questa chiusura mancava!
+
+    private function executeBiddingWar($a, $lId, $lA) 
+    { 
+        $bo = Autobid::where('auction_id', $a->id)->where('user_id', '!=', $lId)->orderBy('max_bid', 'desc')->orderBy('created_at', 'asc')->first(); 
+        if ($bo) { 
+            if ($bo->max_bid > $lA) $a->update(['user_id' => $bo->user_id, 'current_bid' => $lA + 1]); 
+            elseif ($bo && $bo->max_bid == $lA) $a->update(['user_id' => $bo->user_id, 'current_bid' => $lA]); 
+            else $a->update(['user_id' => $lId, 'current_bid' => $lA]); 
+        } else { 
+            if ($lA > $a->current_bid) $a->update(['user_id' => $lId, 'current_bid' => $lA]); 
+        } 
+    }
+    
+    public function release(Request $request) 
+    { 
+        $r = Roster::with('player')->findOrFail($request->roster_id); 
+        $p = LeagueParticipant::where('user_id', $r->user_id)->first(); 
+        if ($p) { 
+            $p->increment('remaining_budget', ceil(($r->release_clause ?: $r->purchase_price) / 2)); 
+            $p->decrement('years_budget', ($r->contract_years - floor($r->contract_years / 2))); 
+        } 
+        $r->delete(); 
+        return back(); 
+    }
+    
+    public function updateContract(Request $request) 
+    { 
+        $r = Roster::findOrFail($request->roster_id); 
+        $r->update(['contract_years' => $request->new_years, 'release_clause' => ($r->release_clause ?: $r->purchase_price) + $request->clausola_investment]); 
+        return back(); 
+    }
+    
+    public function history() 
+    { 
+        $p = LeagueParticipant::where('user_id', auth()->id())->first(); 
+        return Inertia::render('Market/History', ['league' => League::find($p->league_id), 'movements' => Roster::where('league_id', $p->league_id)->with(['player', 'user'])->orderBy('created_at', 'desc')->get()]); 
+    }
+
+    // --- FINANZE ---
     public function financesPage()
     {
         $user = auth()->user();
@@ -132,14 +203,10 @@ class MarketController extends Controller
         $lp = LeagueParticipant::where('user_id', $user->id)->where('league_id', $firstLeague->id)->first();
 
         if (!$lp || $lp->games_played == 0) {
-            return Inertia::render('Societa/Finanze', ['stats' => null, 'message' => 'Gioca almeno una partita per attivare il Financial Terminal.']);
+            return Inertia::render('Societa/Finanze', ['stats' => null, 'message' => 'Gioca almeno una partita.']);
         }
 
-        // 1. Parametri fissi
-        $investimentoBase = 130;
-        $plusvaloreMax = 440;
-
-        // 2. Calcolo Benchmark Top 25 per Ruolo
+        $inv = 130; $plus = 440;
         $topP = RealPlayer::where('role', 'P')->orderBy('quotation', 'desc')->limit(3)->get()->sum('quotation');
         $topD = RealPlayer::where('role', 'D')->orderBy('quotation', 'desc')->limit(8)->get()->sum('quotation');
         $topC = RealPlayer::where('role', 'C')->orderBy('quotation', 'desc')->limit(8)->get()->sum('quotation');
@@ -155,49 +222,39 @@ class MarketController extends Controller
         $tutti = LeagueParticipant::where('league_id', $firstLeague->id)->get();
         $maxGolLega = $tutti->map(fn($s) => $calcolaGol($s->games_played > 0 ? ($s->total_points / $s->games_played) : 0))->max() ?: 1;
 
-        // 3. Calcolo Valori e Trend per TUTTE le squadre
         $allTeamsValues = [];
         foreach ($tutti as $s) {
             $rSum = Roster::where('user_id', $s->user_id)->where('league_id', $s->league_id)->with('player')->get()->sum(fn($r) => $r->player->quotation ?? 0);
-            $assetQual = $rSum / $benchmarkVal;
-            $mediaP = $s->games_played > 0 ? ($s->total_points / $s->games_played) : 0;
-            $winEff = $calcolaGol($mediaP) / $maxGolLega;
-            $valoreAttuale = $investimentoBase + ($plusvaloreMax * $assetQual * $winEff);
+            $aQ = $rSum / $benchmarkVal;
+            $mP = $s->games_played > 0 ? ($s->total_points / $s->games_played) : 0;
+            $wE = $calcolaGol($mP) / $maxGolLega;
+            $val = $inv + ($plus * $aQ * $wE);
 
             $prev = MarketValueHistory::where('user_id', $s->user_id)->where('matchday', '<', $s->games_played)->orderBy('matchday', 'desc')->first();
             $trend = ['dir' => 'stable', 'perc' => 0];
             if ($prev && $prev->value > 0) {
-                $diff = $valoreAttuale - $prev->value;
+                $diff = $val - $prev->value;
                 $trend = ['dir' => $diff > 0 ? 'up' : ($diff < 0 ? 'down' : 'stable'), 'perc' => round(abs(($diff / $prev->value) * 100), 1)];
             }
-            $allTeamsValues[] = ['user_id' => $s->user_id, 'team_name' => $s->team_name, 'valore' => round($valoreAttuale, 2), 'trend' => $trend];
+            $allTeamsValues[] = ['user_id' => $s->user_id, 'team_name' => $s->team_name, 'valore' => round($val, 2), 'trend' => $trend];
         }
         usort($allTeamsValues, fn($a, $b) => $b['valore'] <=> $a['valore']);
 
-        // 4. Dati Utente Loggato
-        $mioDato = collect($allTeamsValues)->firstWhere('user_id', $user->id);
-        $tuaMediaPunti = $lp->total_points / $lp->games_played;
-
-        $stats = [
-            'valore_monetario' => $mioDato['valore'],
-            'trend' => $mioDato['trend'],
-            'asset_quality_perc' => round(($rosterSum ?? 0 / $benchmarkVal) * 100, 1), // Calcolato dinamicamente per l'utente loggato nel ciclo sopra
-            'winning_efficiency_perc' => round(($calcolaGol($tuaMediaPunti) / $maxGolLega) * 100, 1),
-            'tuoi_gol' => $calcolaGol($tuaMediaPunti),
-            'leader_gol' => $maxGolLega,
-            'benchmark_val' => $benchmarkVal,
-            'media_punti' => round($tuaMediaPunti, 2)
-        ];
-
-        // Nota: Il calcolo asset_quality_perc sopra usa $rosterSum del ciclo. 
-        // Per sicurezza ricalcoliamolo pulito per l'utente loggato qui:
-        $myRosterSum = Roster::where('user_id', $user->id)->where('league_id', $firstLeague->id)->with('player')->get()->sum(fn($r) => $r->player->quotation ?? 0);
-        $stats['asset_quality_perc'] = round(($myRosterSum / $benchmarkVal) * 100, 1);
+        $myFin = collect($allTeamsValues)->firstWhere('user_id', $user->id);
+        $tuaMedia = $lp->total_points / $lp->games_played;
 
         return Inertia::render('Societa/Finanze', [
             'leagues' => $leagues,
             'myData' => $lp,
-            'stats' => $stats,
+            'stats' => [
+                'valore_monetario' => $myFin['valore'],
+                'trend' => $myFin['trend'],
+                'asset_quality_perc' => round((Roster::where('user_id', $user->id)->where('league_id', $firstLeague->id)->with('player')->get()->sum(fn($r)=>$r->player->quotation??0) / $benchmarkVal)*100, 1),
+                'winning_efficiency_perc' => round(($calcolaGol($tuaMedia) / $maxGolLega) * 100, 1),
+                'tuoi_gol' => $calcolaGol($tuaMedia),
+                'leader_gol' => $maxGolLega,
+                'benchmark_val' => $benchmarkVal
+            ],
             'allTeams' => $allTeamsValues,
             'history' => MarketValueHistory::where('user_id', $user->id)->orderBy('matchday', 'asc')->get()
         ]);
