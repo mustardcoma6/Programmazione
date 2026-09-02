@@ -171,6 +171,10 @@ const formatEuro = (value) => {
                     </div>
                 </div>
 
+                <div class="text-[10px] text-gray-400 p-4">
+                 DEBUG ORARIO: {{ new Date().toLocaleString() }}
+                </div>
+
             </div>
         </div>
     </AuthenticatedLayout>

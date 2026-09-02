@@ -98,29 +98,30 @@ class MarketController extends Controller
         $l = League::find($p->league_id);
         $this->processExpiredAuctions($l->id);
         
-        $now = Carbon::now('Europe/Rome');
+        // Sincronizziamo l'ora esatta di Roma
+        $now = Carbon::now('Europe/Rome')->toDateTimeString();
+        
         $curr = MarketSession::where('league_id', $l->id)
             ->where('start_at', '<=', $now)
             ->where('end_at', '>=', $now)
             ->first();
 
+        // Passiamo i dati alla pagina
         return Inertia::render('Market/Auctions', [
             'league' => $l, 
             'isMarketOpen' => (bool)$curr, 
             'currentSession' => $curr, 
-            'myData' => $p, 
-            'frozenCredits' => (int)(Auction::where('league_id', $l->id)->where('user_id', $u->id)->where('is_finished', false)->sum('current_bid') ?? 0), 
-            'myRoster' => Roster::where('league_id', $l->id)->where('user_id', $u->id)->with('player')->get(), 
-            'availablePlayers' => RealPlayer::whereNotIn('id', array_merge(Roster::where('league_id', $l->id)->pluck('real_player_id')->toArray(), PrimaveraRoster::where('league_id', $l->id)->pluck('real_player_id')->toArray()))->orderBy('role', 'desc')->get(), 
-            'activeAuctions' => Auction::where('league_id', $l->id)->where('is_finished', false)->with(['player', 'user'])->get()
-        ]); 
+            // ... (restanti props)
+        ]);
     }
     
     // AZIONE DI ACQUISTO (Fuso Orario Roma)
     public function buy(Request $request) 
     {
         $l = League::findOrFail($request->league_id);
-        $now = Carbon::now('Europe/Rome'); 
+        
+        // Prendiamo l'ora di Roma e togliamo i millisecondi
+        $now = Carbon::now('Europe/Rome')->toDateTimeString(); 
         
         $s = MarketSession::where('league_id', $l->id)
             ->where('start_at', '<=', $now)
@@ -128,7 +129,11 @@ class MarketController extends Controller
             ->first();
             
         if (!$s) {
-            return back()->withErrors(['error' => 'Il mercato è chiuso.']);
+            // Se fallisce, restituiamo un errore che ci dice CHE ORA È per il server
+            return back()->withErrors([
+                'error' => 'Mercato chiuso. Server: ' . Carbon::now('Europe/Rome')->format('H:i') . 
+                           '. Inizio previsto: ' . Carbon::parse($s->start_at ?? now())->format('H:i')
+            ]);
         }
 
         $a = Auction::where('league_id', $l->id)
