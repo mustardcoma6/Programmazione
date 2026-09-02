@@ -28,6 +28,7 @@ class MarketController extends Controller
     }
 
     // SALVA NUOVA SESSIONE
+    // SALVA NUOVA SESSIONE (Versione corretta per il timer)
     public function storeSession(Request $request) 
     {
         $p = LeagueParticipant::where('user_id', auth()->id())->first();
@@ -35,22 +36,34 @@ class MarketController extends Controller
         $request->validate([
             'start_at' => 'required|date',
             'end_at' => 'required|date|after:start_at',
-            'auction_time' => 'required',
+            'auction_time' => 'required', // Può essere "10" o "00:10" o "1:30"
             'roles' => 'required|array'
         ]);
 
-        $t = explode(':', $request->auction_time); 
-        $tm = (isset($t[1])) ? ($t[0] * 60) + $t[1] : 90;
+        $inputTime = $request->auction_time;
+        $minutes = 0;
+
+        // Se l'utente usa il formato HH:MM (es. 01:30 o 00:10)
+        if (str_contains($inputTime, ':')) {
+            $parts = explode(':', $inputTime);
+            $minutes = ((int)$parts[0] * 60) + (int)$parts[1];
+        } else {
+            // Se l'utente scrive solo un numero (es. 10)
+            $minutes = (int)$inputTime;
+        }
+
+        // Protezione: se il calcolo fallisce o mettono 0, mettiamo 5 minuti di default
+        if ($minutes <= 0) $minutes = 5;
 
         MarketSession::create([
             'league_id' => $p->league_id,
             'start_at' => $request->start_at,
             'end_at' => $request->end_at,
-            'auction_duration' => $tm,
+            'auction_duration' => $minutes, // Salviamo i minuti reali scelti
             'allowed_roles' => implode(',', $request->roles)
         ]);
 
-        return back()->with('message', 'Sessione salvata!');
+        return back()->with('message', 'Sessione salvata! Durata aste: ' . $minutes . ' minuti.');
     }
 
     // CHIUSURA EMERGENZA
