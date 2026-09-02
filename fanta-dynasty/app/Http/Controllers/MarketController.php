@@ -215,11 +215,37 @@ class MarketController extends Controller
         return back(); 
     }
 
-    public function myRosterPage() { 
-        $u = auth()->user(); $p = LeagueParticipant::where('user_id', $u->id)->first();
-        $pros = Roster::where('league_id', $p->league_id)->where('user_id', $u->id)->with('player')->get();
-        return Inertia::render('Roster/Index', ['myData' => $p, 'myPlayers' => $pros]); 
-    }
+    public function myRosterPage() 
+{ 
+    $u = auth()->user(); 
+    $p = LeagueParticipant::where('user_id', $u->id)->first(); 
+    
+    if (!$p) return redirect()->route('dashboard'); 
+
+    // Recuperiamo i giocatori della prima squadra e della primavera
+    $pros = Roster::where('league_id', $p->league_id)->where('user_id', $u->id)->with('player')->get();
+    $juniors = PrimaveraRoster::where('league_id', $p->league_id)->where('user_id', $u->id)->with('player')->get(); 
+
+    // CALCOLO IL VALORE TOTALE (Somma dei prezzi pagati all'asta)
+    $valoreTotale = $pros->sum('purchase_price') + $juniors->sum('purchase_price'); 
+
+    // Prepariamo la lista per la tabella
+    $merged = $pros->map(function($i){ $i->is_primavera=false; return $i; })
+             ->concat($juniors->map(function($i){ $i->is_primavera=true; return $i; }))
+             ->sortBy([
+                 function($a,$b){
+                     $o=['P'=>1,'D'=>2,'C'=>3,'A'=>4]; 
+                     return $o[$a->player->role] <=> $o[$b->player->role];
+                 },
+                 ['player.name','asc']
+             ])->values()->all(); 
+
+    return Inertia::render('Roster/Index', [
+        'myData' => $p, 
+        'myPlayers' => $merged, 
+        'rosterValue' => (int)$valoreTotale // <--- Questo è il dato che mancava!
+    ]); 
+}
 
     public function release(Request $request) { 
         $r = Roster::findOrFail($request->roster_id); 

@@ -81,11 +81,13 @@ const saveContract = (item) => {
                         <span class="font-bold text-gray-400 uppercase text-[10px]">Crediti</span>
                         <p class="text-4xl font-black font-mono text-green-600">{{ myData.remaining_budget }}</p>
                     </div>
-                    <div class="bg-white p-6 shadow-lg rounded-3xl border-l-8 border-yellow-500 flex justify-between items-center">
-                        <span class="font-bold text-gray-400 uppercase text-[10px]">Valore Rosa</span>
-                        <p class="text-4xl font-black font-mono text-yellow-500">{{ rosterValue }}</p>
+                    <div class="bg-white p-6 rounded-3xl shadow-xl border-l-[12px] border-yellow-500 flex justify-between items-center">
+                        <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Valore Rosa</p>
+                        <p class="text-4xl font-black text-yellow-600 font-mono">
+                            {{ rosterValue || 0 }} <span class="text-sm text-gray-300">cr</span>
+                        </p>
                     </div>
-                </div>
+                </div> <!-- FINE GRIGLIA BANNERS -->
 
                 <!-- 1. VERSIONE DESKTOP (TABELLA) -->
                 <div class="hidden md:block bg-white shadow-xl rounded-3xl overflow-hidden border border-gray-200">
@@ -103,14 +105,16 @@ const saveContract = (item) => {
                         <tbody>
                             <tr v-for="item in myPlayers" :key="item.id" class="border-b transition" :class="item.is_primavera ? 'bg-violet-50/50' : 'hover:bg-gray-50'">
                                 <td class="p-4 uppercase text-sm font-black text-gray-800">
-                                    <span class="mr-2" :class="getRoleClass(item.player.role)">{{ item.player.role }}</span> 
+                                    <span class="mr-2 px-2 py-1 rounded" :class="getRoleClass(item.player.role)">{{ item.player.role }}</span> 
                                     {{ item.player.name }}
                                     <span v-if="item.is_primavera" class="ml-2 text-[8px] bg-violet-600 text-white px-1 rounded">PRIMAVERA</span>
                                 </td>
                                 
                                 <td class="p-4 text-center">
                                     <template v-if="!item.is_primavera">
-                                        <div v-if="addedYears[item.id] > 0"><input type="number" v-model="addedClausola[item.id]" class="w-16 p-1 text-center border-orange-300 rounded text-xs" placeholder="+ cr"></div>
+                                        <div v-if="addedYears[item.id] > 0">
+                                            <input type="number" v-model="addedClausola[item.id]" class="w-16 p-1 text-center border-orange-300 rounded text-xs" placeholder="+ cr">
+                                        </div>
                                         <span v-else-if="item.release_clause > 0" class="font-mono font-black text-orange-500">{{ item.release_clause }} cr</span>
                                         <span v-else class="text-gray-400 text-[10px]">NO</span>
                                     </template>
@@ -118,10 +122,16 @@ const saveContract = (item) => {
                                 </td>
 
                                 <td class="p-4 text-center font-mono font-bold text-gray-400">{{ item.is_primavera ? '-' : item.contract_years }}</td>
-                                <td class="p-4 text-center font-mono font-bold text-xs text-gray-600">{{ item.is_primavera ? 'Indeterminata' : getExpirationDate(item.contract_years, addedYears[item.id]) }}</td>
+                                <td class="p-4 text-center font-mono font-bold text-xs text-gray-600">
+                                    {{ item.is_primavera ? 'Indeterminata' : getExpirationDate(item.contract_years, addedYears[item.id]) }}
+                                </td>
                                 <td class="p-4">
                                     <div v-if="!item.is_primavera" class="flex flex-col items-center gap-2">
-                                        <div class="flex items-center bg-gray-50 border rounded-lg overflow-hidden"><button @click="changeAdded(item.id, -1)" :disabled="addedYears[item.id] === 0" class="px-2 text-red-600">-</button><span class="px-3 font-black text-blue-600">+{{ addedYears[item.id] }}</span><button @click="changeAdded(item.id, 1)" class="px-2 text-green-600">+</button></div>
+                                        <div class="flex items-center bg-gray-50 border rounded-lg overflow-hidden">
+                                            <button @click="changeAdded(item.id, -1)" :disabled="addedYears[item.id] === 0" class="px-2 text-red-600">-</button>
+                                            <span class="px-3 font-black text-blue-600">+{{ addedYears[item.id] }}</span>
+                                            <button @click="changeAdded(item.id, 1)" class="px-2 text-green-600">+</button>
+                                        </div>
                                         <button v-if="addedYears[item.id] > 0" @click="saveContract(item)" class="text-[9px] bg-green-600 text-white px-3 py-1 rounded-full font-black uppercase shadow">Salva</button>
                                     </div>
                                     <span v-else class="block text-center text-[8px] font-black text-violet-400 uppercase italic">Gestito da Admin</span>
@@ -132,10 +142,9 @@ const saveContract = (item) => {
                     </table>
                 </div>
 
-                <!-- 2. VERSIONE MOBILE (CARDS GROSSE E COMPATTE) -->
+                <!-- 2. VERSIONE MOBILE (CARDS) -->
                 <div class="md:hidden space-y-6">
                     <div v-for="item in myPlayers" :key="item.id" class="rounded-[2rem] shadow-xl border-l-[12px] overflow-hidden bg-white" :class="item.is_primavera ? 'border-violet-500' : 'border-blue-600'">
-                        <!-- Testata Card -->
                         <div class="p-5 border-b bg-gray-50 flex justify-between items-center">
                             <div class="flex items-center gap-3">
                                 <span class="font-black px-3 py-1 rounded-xl text-xs shadow-sm" :class="getRoleClass(item.player.role)">{{ item.player.role }}</span>
@@ -143,8 +152,6 @@ const saveContract = (item) => {
                             </div>
                             <span v-if="item.is_primavera" class="text-[8px] bg-violet-600 text-white px-2 py-1 rounded-full font-black uppercase tracking-widest">Primavera</span>
                         </div>
-                        
-                        <!-- Corpo Card -->
                         <div class="p-5 space-y-6">
                             <div class="flex justify-between items-start">
                                 <div class="space-y-1">
@@ -153,7 +160,6 @@ const saveContract = (item) => {
                                     <p class="text-sm font-mono font-bold" :class="addedYears[item.id] > 0 ? 'text-blue-600 animate-pulse' : 'text-gray-500'">
                                         {{ item.is_primavera ? 'Senza Scadenza' : getExpirationDate(item.contract_years, addedYears[item.id]) }}
                                     </p>
-                                    <p v-if="!item.is_primavera && addedYears[item.id] > 0" class="text-[8px] font-black text-blue-400 uppercase">Anteprima Scadenza</p>
                                     <p class="mt-2 text-xs font-bold text-orange-500 uppercase">Clausola: {{ item.release_clause > 0 ? item.release_clause + ' cr' : 'Nessuna' }}</p>
                                 </div>
                                 <div class="text-right">
@@ -161,8 +167,6 @@ const saveContract = (item) => {
                                     <p class="text-lg font-black text-gray-900 font-mono">{{ item.purchase_price }} cr</p>
                                 </div>
                             </div>
-
-                            <!-- Sezione Azione Rinnovo (Solo per Professionisti) -->
                             <div v-if="!item.is_primavera" class="bg-blue-50/50 rounded-[1.5rem] p-5 border border-blue-100 space-y-4">
                                 <div class="flex justify-between items-center">
                                     <span class="text-xs font-black text-blue-600 uppercase">Rinnova</span>
@@ -172,22 +176,17 @@ const saveContract = (item) => {
                                         <button @click="changeAdded(item.id, 1)" class="px-6 py-2 text-green-600 font-black text-xl">+</button>
                                     </div>
                                 </div>
-
-                                <!-- Box Clausola Mobile Sbloccabile -->
                                 <div v-if="addedYears[item.id] > 0" class="bg-white p-4 rounded-2xl border border-orange-200 shadow-inner">
                                     <label class="block text-[10px] font-black text-orange-500 uppercase text-center mb-2">Investimento Clausola</label>
-                                    <input type="number" v-model="addedClausola[item.id]" class="w-full text-center text-2xl font-black font-mono border-none bg-orange-50 rounded-xl focus:ring-orange-500" placeholder="0">
-                                    <p class="text-[10px] text-center text-orange-400 font-bold uppercase mt-2">Nuova Clausola: {{ (item.release_clause > 0 ? item.release_clause : item.purchase_price) + (parseInt(addedClausola[item.id]) || 0) }} cr</p>
+                                    <input type="number" v-model="addedClausola[item.id]" class="w-full text-center text-2xl font-black font-mono border-none bg-orange-50 rounded-xl" placeholder="0">
                                 </div>
-
                                 <button v-if="addedYears[item.id] > 0" @click="saveContract(item)" class="w-full bg-green-600 text-white py-4 rounded-2xl font-black uppercase tracking-widest shadow-lg active:scale-95 transition-all text-sm">
                                     Salva Modifiche
                                 </button>
                             </div>
                         </div>
                     </div>
-                </div>
-                <!-- FINE MOBILE -->
+                </div> <!-- FINE MOBILE -->
 
             </div>
         </div>
@@ -195,8 +194,8 @@ const saveContract = (item) => {
 </template>
 
 <style scoped>
-.role-P { color: #856404 !important; background-color: #fff3cd !important; padding: 2px 8px; border-radius: 6px; font-weight: 900; }
-.role-D { color: #155724 !important; background-color: #d4edda !important; padding: 2px 8px; border-radius: 6px; font-weight: 900; }
-.role-C { color: #004085 !important; background-color: #cce5ff !important; padding: 2px 8px; border-radius: 6px; font-weight: 900; }
-.role-A { color: #721c24 !important; background-color: #f8d7da !important; padding: 2px 8px; border-radius: 6px; font-weight: 900; }
+.role-P { color: #856404 !important; background-color: #fff3cd !important; }
+.role-D { color: #155724 !important; background-color: #d4edda !important; }
+.role-C { color: #004085 !important; background-color: #cce5ff !important; }
+.role-A { color: #721c24 !important; background-color: #f8d7da !important; }
 </style>
