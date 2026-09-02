@@ -196,10 +196,7 @@ const canCallNewPlayers = computed(() => {
                                     <span class="text-[9px] font-bold text-gray-400 uppercase italic">Rilancio (Min: {{ auc.current_bid + 1 }})</span>
                                     <div class="flex gap-1"><input type="number" v-model="inputs.prices[auc.real_player_id]" class="w-full rounded border-gray-300 text-xs" :placeholder="auc.current_bid + 1"><button @click="inviaOfferta(auc.real_player_id, auc.current_bid)" class="bg-blue-600 text-white px-2 py-1 rounded font-bold text-[10px] uppercase">Vai</button></div>
                                 </div>
-                                <div class="flex flex-col gap-1">
-                                    <span class="text-[9px] font-bold text-orange-500 uppercase italic">Offerta Max</span>
-                                    <div class="flex gap-1"><input type="number" v-model="inputs.autobids[auc.real_player_id]" class="w-full rounded border-orange-200 text-xs" placeholder="Max"><button @click="inviaOfferta(auc.real_player_id, auc.current_bid, true)" class="bg-orange-500 text-white px-2 py-1 rounded font-bold text-[10px] uppercase">Auto</button></div>
-                                </div>
+                    
                             </div>
                         </div>
                     </div>
