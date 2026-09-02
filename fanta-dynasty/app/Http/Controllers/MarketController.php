@@ -119,9 +119,7 @@ class MarketController extends Controller
     public function buy(Request $request) 
     {
         $l = League::findOrFail($request->league_id);
-        
-        // Prendiamo l'ora di Roma e togliamo i millisecondi
-        $now = Carbon::now('Europe/Rome')->toDateTimeString(); 
+        $now = Carbon::now('Europe/Rome'); 
         
         $s = MarketSession::where('league_id', $l->id)
             ->where('start_at', '<=', $now)
@@ -129,11 +127,7 @@ class MarketController extends Controller
             ->first();
             
         if (!$s) {
-            // Se fallisce, restituiamo un errore che ci dice CHE ORA È per il server
-            return back()->withErrors([
-                'error' => 'Mercato chiuso. Server: ' . Carbon::now('Europe/Rome')->format('H:i') . 
-                           '. Inizio previsto: ' . Carbon::parse($s->start_at ?? now())->format('H:i')
-            ]);
+            return back()->withErrors(['error' => 'Il mercato è chiuso.']);
         }
 
         $a = Auction::where('league_id', $l->id)
@@ -141,6 +135,7 @@ class MarketController extends Controller
             ->where('is_finished', false)
             ->first();
 
+        // Se l'asta non esiste, la creiamo
         if (!$a) {
             $a = Auction::create([
                 'league_id' => $l->id,
@@ -152,26 +147,63 @@ class MarketController extends Controller
             ]);
         }
 
-        $nb = $request->price ?? ($a->current_bid + 1);
-        $this->executeBiddingWar($a, auth()->id(), $nb);
+        // Il "prezzo" che invii ora è il tuo MASSIMO (es. 10)
+        $maxBidUtente = (int)$request->price;
 
+        // 1. Salviamo/Aggiorniamo il tuo rilancio automatico
+        Autobid::updateOrCreate(
+            ['auction_id' => $a->id, 'user_id' => auth()->id()],
+            ['max_bid' => $maxBidUtente]
+        );
+
+        // 2. Facciamo partire la guerra di rilanci
+        $this->executeBiddingWar($a);
+
+        // 3. Bonus tempo se mancano meno di 30 secondi
         if ($now->diffInSeconds($a->expires_at, false) <= 30) {
             $a->update(['expires_at' => $now->copy()->addMinute()]);
         }
 
         return back();
-    } // <-- Questa chiusura mancava!
+    }
 
-    private function executeBiddingWar($a, $lId, $lA) 
-    { 
-        $bo = Autobid::where('auction_id', $a->id)->where('user_id', '!=', $lId)->orderBy('max_bid', 'desc')->orderBy('created_at', 'asc')->first(); 
-        if ($bo) { 
-            if ($bo->max_bid > $lA) $a->update(['user_id' => $bo->user_id, 'current_bid' => $lA + 1]); 
-            elseif ($bo && $bo->max_bid == $lA) $a->update(['user_id' => $bo->user_id, 'current_bid' => $lA]); 
-            else $a->update(['user_id' => $lId, 'current_bid' => $lA]); 
-        } else { 
-            if ($lA > $a->current_bid) $a->update(['user_id' => $lId, 'current_bid' => $lA]); 
-        } 
+
+    private function executeBiddingWar($a) 
+    {
+        // Prendiamo i due Autobid più alti per questa asta
+        $topBids = Autobid::where('auction_id', $a->id)
+            ->orderBy('max_bid', 'desc')
+            ->orderBy('created_at', 'asc')
+            ->limit(2)
+            ->get();
+
+        $vincitore = $topBids[0]; // Quello con il max_bid più alto
+        $secondo = $topBids[1] ?? null; // Il rivale più vicino
+
+        if (!$secondo) {
+            // Se c'è solo un offerente, l'asta parte da 1 (o dal prezzo base)
+            $nuovoPrezzo = ($a->current_bid == 0) ? 1 : $a->current_bid;
+            $a->update([
+                'user_id' => $vincitore->user_id,
+                'current_bid' => $nuovoPrezzo
+            ]);
+        } else {
+            // Se ci sono due o più offerenti:
+            if ($vincitore->max_bid > $secondo->max_bid) {
+                // Il vincitore supera il secondo di 1 credito
+                $a->update([
+                    'user_id' => $vincitore->user_id,
+                    'current_bid' => $secondo->max_bid + 1
+                ]);
+            } else {
+                // In caso di parità perfetta, vince chi ha impostato l'autobid per primo
+                // Il prezzo diventa esattamente il loro massimo
+                $a->update([
+                    'user_id' => $vincitore->user_id,
+                    'current_bid' => $vincitore->max_bid
+                ]);
+            }
+        }
     }
     
     public function release(Request $request) 
