@@ -80,22 +80,26 @@ Route::middleware(['auth'])->group(function () {
     });
     
     Route::get('/debug-finanze', function () {
-    $leagueId = \App\Models\LeagueParticipant::first()->league_id; // Prende la prima lega per test
-    
-    return [
-        'benchmark_top25' => \App\Models\RealPlayer::where('role', 'P')->orderBy('quotation', 'desc')->limit(3)->get()->sum('quotation') +
-                             \App\Models\RealPlayer::where('role', 'D')->orderBy('quotation', 'desc')->limit(8)->get()->sum('quotation') +
-                             \App\Models\RealPlayer::where('role', 'C')->orderBy('quotation', 'desc')->limit(8)->get()->sum('quotation') +
-                             \App\Models\RealPlayer::where('role', 'A')->orderBy('quotation', 'desc')->limit(6)->get()->sum('quotation'),
+        // Prendiamo la prima lega disponibile per l'analisi
+        $lp = \App\Models\LeagueParticipant::first();
+        if (!$lp) return ['error' => 'Nessun partecipante trovato'];
+        $leagueId = $lp->league_id;
         
-        'squadre' => \App\Models\LeagueParticipant::where('league_id', $leagueId)
-            ->get(['user_id', 'team_name', 'total_points', 'games_played', 'league_points']),
+        return [
+            'benchmark_top25' => \App\Models\RealPlayer::where('role', 'P')->orderBy('quotation', 'desc')->limit(3)->get()->sum('quotation') +
+                                 \App\Models\RealPlayer::where('role', 'D')->orderBy('quotation', 'desc')->limit(8)->get()->sum('quotation') +
+                                 \App\Models\RealPlayer::where('role', 'C')->orderBy('quotation', 'desc')->limit(8)->get()->sum('quotation') +
+                                 \App\Models\RealPlayer::where('role', 'A')->orderBy('quotation', 'desc')->limit(6)->get()->sum('quotation'),
             
-        'storico_valori' => \App\Models\MarketValueHistory::where('league_id', $leagueId)
-            ->orderBy('matchday', 'asc')
-            ->orderBy('user_id', 'asc')
-            ->get(['user_id', 'matchday', 'value'])
-    ];
+            'squadre' => \App\Models\LeagueParticipant::where('league_id', $leagueId)
+                ->get(['user_id', 'team_name', 'total_points', 'games_played', 'league_points']),
+                
+            'storico_valori' => \App\Models\MarketValueHistory::where('league_id', $leagueId)
+                ->orderBy('matchday', 'asc')
+                ->orderBy('user_id', 'asc')
+                ->get(['user_id', 'matchday', 'value'])
+        ];
+    });
 });
 
 require __DIR__.'/auth.php';
