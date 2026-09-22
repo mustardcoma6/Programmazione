@@ -15,21 +15,23 @@ const props = defineProps({
 });
 
 // Funzione formattazione Euro
-const formatEuro = (value) => {
-    if (!value) return '0,00';
-    return Number(value).toLocaleString('it-IT', { minimumFractionDigits: 2 });
+const formatEuro = (val) => {
+    return new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(val);
 };
 
-// Calcolo valore Euro per il Top Player: 0.26 x Quotazione
-const getEuroValue = (quotation) => {
-    const q = Number(quotation) || 0;
+// Calcolo valore Euro Top Player uguale a La Mia Rosa (0.26 x Quotazione)
+const topPlayerEuroValue = computed(() => {
+    if (!props.myPlayers || props.myPlayers.length === 0) return '0,00 €';
+    const sorted = [...props.myPlayers].sort((a, b) => (b.purchase_price || 0) - (a.purchase_price || 0));
+    const top = sorted[0];
+    if (!top || !top.player) return '0,00 €';
+    const q = Number(top.player.quotation ?? top.player.initial_value ?? 0);
     return (0.26 * q).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
-};
+});
 </script>
 
 <template>
     <Head title="Dashboard" />
-
     <AuthenticatedLayout>
         <div class="py-10 px-4">
             <div class="max-w-7xl mx-auto space-y-8">
@@ -113,20 +115,19 @@ const getEuroValue = (quotation) => {
 
                             <!-- SECONDA RIGA: TOP PLAYER -->
                             <div>
-                                <!-- NUOVO CODICE CON IL VALORE IN EURO: -->
-<div class="bg-white p-8 rounded-[2rem] shadow-lg border border-gray-100 text-center">
-    <h4 class="text-[10px] font-black uppercase text-blue-400 mb-2 tracking-widest">💎 Top Player in Rosa</h4>
-    <p class="text-2xl font-black text-gray-900 uppercase tracking-tighter">{{ stats?.topPlayer || 'Nessuno' }}</p>
-    <div class="mt-2 flex items-center justify-center gap-3">
-        <span class="text-3xl font-mono font-black text-green-500">
-            {{ stats?.topPrice || 0 }} <span class="text-xs uppercase">cr</span>
-        </span>
-        <span class="text-gray-300 font-bold">|</span>
-        <span class="text-xl font-mono font-black text-emerald-600 bg-emerald-50 px-3 py-1 rounded-xl border border-emerald-200">
-            {{ getEuroValue(stats?.topPrice) }}
-        </span>
-    </div>
-</div>
+                                <div class="bg-white p-8 rounded-[2rem] shadow-lg border border-gray-100 text-center">
+                                    <h4 class="text-[10px] font-black uppercase text-blue-400 mb-2 tracking-widest">💎 Top Player in Rosa</h4>
+                                    <p class="text-2xl font-black text-gray-900 uppercase tracking-tighter">{{ stats?.topPlayer || 'Nessuno' }}</p>
+                                    <div class="mt-2 flex items-center justify-center gap-3">
+                                        <span class="text-3xl font-mono font-black text-green-500">
+                                            {{ stats?.topPrice || 0 }} <span class="text-xs uppercase">cr</span>
+                                        </span>
+                                        <span class="text-gray-300 font-bold">|</span>
+                                        <span class="text-xl font-mono font-black text-emerald-600 bg-emerald-50 px-3 py-1 rounded-xl border border-emerald-200">
+                                            {{ topPlayerEuroValue }}
+                                        </span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
