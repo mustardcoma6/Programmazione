@@ -91,6 +91,20 @@ class LeagueController extends Controller
             $topQuotation = $topSigning ? ($topSigning->player->quotation ?? $topSigning->player->initial_value ?? 0) : 0;
             $topEuro = number_format(0.26 * (float)$topQuotation, 2, ',', '.') . ' €';
 
+            // Calcolo Top Giovane / Primavera (per quotazione)
+$allMyYoung = PrimaveraRoster::where('user_id', $user->id)->where('league_id', $firstLeague->id)->with('player')->get();
+// Se non ha primavera, cerca gli under 21 in prima squadra
+if ($allMyYoung->isEmpty()) {
+$allMyYoung = Roster::where('user_id', $user->id)->where('league_id', $firstLeague->id)
+->whereHas('player', fn($q) => $q->where('is_under21', true)->orWhere('birth_year', '>=', date('Y') - 21))
+->with('player')->get();
+}
+$topYoung = $allMyYoung->sortByDesc(fn($r) => $r->player->quotation ?? $r->player->initial_value ?? 0)->first();
+$topYoungName = $topYoung ? $topYoung->player->name : 'Nessuno';
+$topYoungPrice = $topYoung ? ($topYoung->purchase_price ?? $topYoung->player->quotation ?? 0) : 0;
+$topYoungQuotation = $topYoung ? ($topYoung->player->quotation ?? $topYoung->player->initial_value ?? 0) : 0;
+$topYoungEuro = number_format(0.26 * (float)$topYoungQuotation, 2, ',', '.') . ' €';
+
             // Calcolo posizione esatta nella tabella Ranking Storico Ufficiale
             $rankingData = [
                 'SANTOS', 'BOTAFOGO', 'PALMEIRAS', 'ATLETICO G MINEIRO', 
@@ -109,6 +123,9 @@ class LeagueController extends Controller
                 'topPlayer' => $topSigning ? $topSigning->player->name : 'Nessuno',
                 'topPrice' => $topSigning ? $topSigning->purchase_price : 0,
                 'topEuro' => $topEuro,
+                'topYoung' => $topYoungName,
+'topYoungPrice' => $topYoungPrice,
+'topYoungEuro' => $topYoungEuro,
                 'valore_societario' => $mioDatoFin['valore'] ?? 130,
                 'trend' => $mioDatoFin['trend'] ?? ['dir' => 'stable', 'perc' => 0],
                 'probabilita_vittoria' => round((($mioDatoFin['valore'] ?? 130) / 570) * 100, 1)

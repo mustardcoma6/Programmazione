@@ -113,22 +113,41 @@ const topPlayerEuroValue = computed(() => {
                                 </div>
                             </div>
 
-                            <!-- SECONDA RIGA: TOP PLAYER -->
-                            <div>
-                                <div class="bg-white p-8 rounded-[2rem] shadow-lg border border-gray-100 text-center">
-                                    <h4 class="text-[10px] font-black uppercase text-blue-400 mb-2 tracking-widest">💎 Top Player in Rosa</h4>
-                                    <p class="text-2xl font-black text-gray-900 uppercase tracking-tighter">{{ stats?.topPlayer || 'Nessuno' }}</p>
-                                    <div class="mt-2 flex items-center justify-center gap-3">
-                                        <span class="text-3xl font-mono font-black text-green-500">
-                                            {{ stats?.topPrice || 0 }} <span class="text-xs uppercase">cr</span>
-                                        </span>
-                                        <span class="text-gray-300 font-bold">|</span>
-                                        <span class="text-xl font-mono font-black text-emerald-600 bg-emerald-50 px-3 py-1 rounded-xl border border-emerald-200">
-                                            {{ stats?.topEuro || '0,00 €' }}
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
+                            <!-- SECONDA RIGA: TOP PLAYER & TOP GIOVANE -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<!-- 1. TOP PLAYER -->
+<div class="bg-white p-8 rounded-[2rem] shadow-lg border border-gray-100 text-center">
+<h4 class="text-[10px] font-black uppercase text-blue-500 mb-2 tracking-widest">💎 Top Player in Rosa</h4>
+<p class="text-2xl font-black text-gray-900 uppercase tracking-tighter truncate">{{ stats?.topPlayer || 'Nessuno' }}</p>
+<div class="mt-2 flex items-center justify-center gap-3">
+<span class="text-3xl font-mono font-black text-green-500">
+{{ stats?.topPrice || 0 }} <span class="text-xs uppercase">cr</span>
+</span>
+<span class="text-gray-300 font-bold">|</span>
+<span class="text-xl font-mono font-black text-emerald-600 bg-emerald-50 px-3 py-1 rounded-xl border border-emerald-200">
+{{ stats?.topEuro || '0,00 €' }}
+</span>
+</div>
+</div>
+
+<!-- 2. TOP GIOVANE / PRIMAVERA -->
+<div class="bg-white p-8 rounded-[2rem] shadow-lg border border-gray-100 text-center relative overflow-hidden">
+<div class="absolute top-0 right-0 bg-emerald-500 text-white text-[8px] font-black uppercase px-3 py-1 rounded-bl-xl tracking-widest">
+Under-21
+</div>
+<h4 class="text-[10px] font-black uppercase text-emerald-500 mb-2 tracking-widest">🌱 Miglior Talento</h4>
+<p class="text-2xl font-black text-gray-900 uppercase tracking-tighter truncate">{{ stats?.topYoung || 'Nessun U21' }}</p>
+<div class="mt-2 flex items-center justify-center gap-3">
+<span class="text-3xl font-mono font-black text-emerald-500">
+{{ stats?.topYoungPrice || 0 }} <span class="text-xs uppercase">cr</span>
+</span>
+<span class="text-gray-300 font-bold">|</span>
+<span class="text-xl font-mono font-black text-emerald-600 bg-emerald-50 px-3 py-1 rounded-xl border border-emerald-200">
+{{ stats?.topYoungEuro || '0,00 €' }}
+</span>
+</div>
+</div>
+</div>
                         </div>
 
                         <!-- COLONNA DESTRA (CLASSIFICA) -->
