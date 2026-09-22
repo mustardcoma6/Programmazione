@@ -84,7 +84,6 @@ class LeagueController extends Controller
 
             // 4. STATISTICHE UTENTE LOGGATO
             $mioDatoFin = collect($allTeamsValues)->firstWhere('user_id', $user->id);
-            $posCampionato = $classifica->search(fn($i) => $i->user_id === $user->id);
             $topSigning = Roster::where('user_id', $user->id)->where('league_id', $firstLeague->id)
                 ->with('player')->orderBy('purchase_price', 'desc')->first();
 
@@ -92,8 +91,20 @@ class LeagueController extends Controller
             $topQuotation = $topSigning ? ($topSigning->player->quotation ?? $topSigning->player->initial_value ?? 0) : 0;
             $topEuro = number_format(0.26 * (float)$topQuotation, 2, ',', '.') . ' €';
 
+            // Calcolo posizione esatta nella tabella Ranking Storico Ufficiale
+            $rankingData = [
+                'SANTOS', 'BOTAFOGO', 'PALMEIRAS', 'ATLETICO G MINEIRO', 
+                'VASCO DE GAMA', 'CORINTHIANS', 'FLAMENGO', 'CRUZEIRO E.C.', 
+                'FLUMINENSE', 'SAO PAULO'
+            ];
+            
+            $posRanking = false;
+            if ($myData && $myData->team_name) {
+                $posRanking = array_search(strtoupper(trim($myData->team_name)), array_map('strtoupper', $rankingData));
+            }
+
             $stats = [
-                'generalRank' => ($posCampionato !== false) ? ($posCampionato + 1) : '-',
+                'generalRank' => ($posRanking !== false) ? ($posRanking + 1) : '-',
                 'rank' => LeagueParticipant::where('league_id', $firstLeague->id)->where('remaining_budget', '>', $myData->remaining_budget)->count() + 1,
                 'topPlayer' => $topSigning ? $topSigning->player->name : 'Nessuno',
                 'topPrice' => $topSigning ? $topSigning->purchase_price : 0,
