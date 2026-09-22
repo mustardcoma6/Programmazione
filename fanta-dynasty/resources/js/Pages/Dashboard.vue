@@ -14,14 +14,6 @@ const props = defineProps({
     classifica: Array 
 });
 
-// Consiglio del Pres dinamico
-const strategyAdvice = computed(() => {
-    if (!props.myData) return "Benvenuto Pres! Crea o unisciti a una lega per iniziare la tua scalata.";
-    const countA = props.myPlayers ? props.myPlayers.filter(p => p.player?.role === 'A').length : 0;
-    if (countA < 6) return `Rosa in costruzione. Ti mancano delle punte per completare il reparto!`;
-    return "Rosa al completo. Pensa solo alla formazione e alla prossima giornata!";
-});
-
 // Funzione formattazione Euro
 const formatEuro = (value) => {
     if (!value) return '0,00';
@@ -113,16 +105,12 @@ const formatEuro = (value) => {
                                 </div>
                             </div>
 
-                            <!-- SECONDA RIGA: TOP PLAYER E CONSIGLIO -->
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <!-- SECONDA RIGA: TOP PLAYER -->
+                            <div>
                                 <div class="bg-white p-8 rounded-[2rem] shadow-lg border border-gray-100 text-center">
                                     <h4 class="text-[10px] font-black uppercase text-blue-400 mb-2 tracking-widest">💎 Top Player in Rosa</h4>
                                     <p class="text-2xl font-black text-gray-900 uppercase tracking-tighter">{{ stats?.topPlayer || 'Nessuno' }}</p>
                                     <p class="text-4xl font-mono font-black text-green-500 mt-2">{{ stats?.topPrice || 0 }} <span class="text-xs uppercase">cr</span></p>
-                                </div>
-                                <div class="bg-indigo-900 p-8 rounded-[2rem] shadow-xl text-white border-b-8 border-indigo-500 flex flex-col justify-center">
-                                    <h4 class="text-[10px] font-black uppercase text-indigo-400 mb-3 tracking-widest">💡 Consiglio del Pres</h4>
-                                    <p class="text-sm italic leading-relaxed text-indigo-50">"{{ strategyAdvice }}"</p>
                                 </div>
                             </div>
                         </div>
