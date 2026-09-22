@@ -124,7 +124,7 @@ const topPlayerEuroValue = computed(() => {
                                         </span>
                                         <span class="text-gray-300 font-bold">|</span>
                                         <span class="text-xl font-mono font-black text-emerald-600 bg-emerald-50 px-3 py-1 rounded-xl border border-emerald-200">
-                                            {{ topPlayerEuroValue }}
+                                            {{ stats?.topEuro || '0,00 €' }}
                                         </span>
                                     </div>
                                 </div>

@@ -88,11 +88,16 @@ class LeagueController extends Controller
             $topSigning = Roster::where('user_id', $user->id)->where('league_id', $firstLeague->id)
                 ->with('player')->orderBy('purchase_price', 'desc')->first();
 
+            // Calcolo valore Euro IDENTICO a "La Mia Rosa": 0.26 x Quotazione
+            $topQuotation = $topSigning ? ($topSigning->player->quotation ?? $topSigning->player->initial_value ?? 0) : 0;
+            $topEuro = number_format(0.26 * (float)$topQuotation, 2, ',', '.') . ' €';
+
             $stats = [
                 'generalRank' => ($posCampionato !== false) ? ($posCampionato + 1) : '-',
                 'rank' => LeagueParticipant::where('league_id', $firstLeague->id)->where('remaining_budget', '>', $myData->remaining_budget)->count() + 1,
                 'topPlayer' => $topSigning ? $topSigning->player->name : 'Nessuno',
                 'topPrice' => $topSigning ? $topSigning->purchase_price : 0,
+                'topEuro' => $topEuro,
                 'valore_societario' => $mioDatoFin['valore'] ?? 130,
                 'trend' => $mioDatoFin['trend'] ?? ['dir' => 'stable', 'perc' => 0],
                 'probabilita_vittoria' => round((($mioDatoFin['valore'] ?? 130) / 570) * 100, 1)
