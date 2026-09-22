@@ -18,6 +18,12 @@ const getRoleClass = (role) => {
     return '';
 };
 
+// Calcolo valore in Euro: 0.26 x Quotazione
+const getEuroValue = (quotation) => {
+    const q = Number(quotation) || 0;
+    return (0.26 * q).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+};
+
 // --- LOGICA RINNOVO E CLAUSOLA ---
 const addedYears = ref({});
 const addedClausola = ref({}); 
@@ -136,7 +142,13 @@ const saveContract = (item) => {
                                     </div>
                                     <span v-else class="block text-center text-[8px] font-black text-violet-400 uppercase italic">Gestito da Admin</span>
                                 </td>
-                                <td class="p-4 text-center font-mono text-gray-400 text-xs">{{ item.purchase_price }} cr</td>
+                                <!-- NUOVO CODICE CON CREDITI ED EURO: -->
+                                <td class="p-4 text-center font-mono text-xs">
+                                   <div class="font-bold text-gray-800">{{ item.purchase_price }} cr</div>
+                                   <div class="text-[11px] font-bold text-emerald-600">
+                                       {{ getEuroValue(item.player.quotation ?? item.player.initial_value) }}
+                                    </div>
+                                 </td>
                             </tr>
                         </tbody>
                     </table>
@@ -162,10 +174,14 @@ const saveContract = (item) => {
                                     </p>
                                     <p class="mt-2 text-xs font-bold text-orange-500 uppercase">Clausola: {{ item.release_clause > 0 ? item.release_clause + ' cr' : 'Nessuna' }}</p>
                                 </div>
+                                <!-- NUOVO CODICE CON CREDITI ED EURO PER MOBILE: -->
                                 <div class="text-right">
                                     <p class="text-[10px] font-bold text-gray-400 uppercase">Costo</p>
                                     <p class="text-lg font-black text-gray-900 font-mono">{{ item.purchase_price }} cr</p>
-                                </div>
+                                    <p class="text-xs font-bold text-emerald-600 font-mono mt-0.5">
+                                     {{ getEuroValue(item.player.quotation ?? item.player.initial_value) }}
+                                  </p>
+                                 </div>
                             </div>
                             <div v-if="!item.is_primavera" class="bg-blue-50/50 rounded-[1.5rem] p-5 border border-blue-100 space-y-4">
                                 <div class="flex justify-between items-center">
